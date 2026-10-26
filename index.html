@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stjärnracet">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#3fb4ff">
+<title>Stjärnracet</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="ui">
+  <!-- top right: sound -->
+  <button id="muteBtn" class="roundBtn small" aria-label="Ljud">
+    <svg viewBox="0 0 48 48" class="on"><path d="M8 18h8l11-9v30l-11-9H8z" fill="#fff" stroke="#1b3a5c" stroke-width="3" stroke-linejoin="round"/><path d="M33 16c4 4 4 12 0 16M38 11c7 7 7 19 0 26" fill="none" stroke="#1b3a5c" stroke-width="3.5" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 48 48" class="off"><path d="M8 18h8l11-9v30l-11-9H8z" fill="#fff" stroke="#1b3a5c" stroke-width="3" stroke-linejoin="round"/><path d="M33 18l10 12M43 18L33 30" fill="none" stroke="#e3141f" stroke-width="4" stroke-linecap="round"/></svg>
+  </button>
+
+  <!-- bottom controls -->
+  <div id="controls" class="hidden">
+    <div class="left">
+      <button id="slowBtn" class="roundBtn side" aria-label="Långsamt">
+        <svg viewBox="0 0 64 64"><ellipse cx="30" cy="38" rx="18" ry="13" fill="#3fbf4a" stroke="#1d5e22" stroke-width="3"/><path d="M18 36h24M24 27l-2 11M36 27l2 11" stroke="#1d5e22" stroke-width="2.5" fill="none"/><circle cx="50" cy="36" r="7" fill="#8be07a" stroke="#1d5e22" stroke-width="3"/><circle cx="52" cy="34" r="1.8" fill="#1d1d1d"/><path d="M17 49l-3 5M41 49l3 5" stroke="#1d5e22" stroke-width="5" stroke-linecap="round"/></svg>
+      </button>
+      <button id="fastBtn" class="roundBtn side" aria-label="Snabbt">
+        <svg viewBox="0 0 64 64"><path d="M14 18l16 14-16 14M32 18l16 14-16 14" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 18l16 14-16 14M32 18l16 14-16 14" fill="none" stroke="#e8590c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <button id="jumpBtn" class="roundBtn jump" aria-label="Hoppa">
+      <svg viewBox="0 0 64 64"><path d="M32 8L52 32H40v20H24V32H12z" fill="#fff" stroke="#8a3b00" stroke-width="4" stroke-linejoin="round"/></svg>
+      <span>Hoppa!</span>
+    </button>
+  </div>
+
+  <!-- title screen -->
+  <div id="title" class="overlay">
+    <h1>Stjärn<span>racet</span></h1>
+    <button id="startBtn" class="bigBtn go" aria-label="Kör">
+      <svg viewBox="0 0 48 48"><path d="M16 10l24 14-24 14z" fill="#fff" stroke="#1d6b26" stroke-width="3" stroke-linejoin="round"/></svg>
+      <span>Kör!</span>
+    </button>
+  </div>
+
+  <!-- celebration -->
+  <div id="celebrate" class="overlay hidden">
+    <div class="bravo">Bra jobbat!</div>
+    <div class="trophy">
+      <svg viewBox="0 0 120 40"><g fill="#ffd21f" stroke="#e07b00" stroke-width="2.5" stroke-linejoin="round"><path d="M20 4l4.7 10 10.8 1.3-8 7.4 2.1 10.8L20 28.2 10.4 33.5l2.1-10.8-8-7.4L15.3 14z"/><path d="M60 2l5.5 11.6 12.7 1.5-9.4 8.7 2.5 12.6L60 30.2 48.7 36.4l2.5-12.6-9.4-8.7 12.7-1.5z"/><path d="M100 4l4.7 10 10.8 1.3-8 7.4 2.1 10.8-9.6-5.3-9.6 5.3 2.1-10.8-8-7.4 10.8-1.3z"/></g></svg>
+    </div>
+    <button id="nextBtn" class="bigBtn go hidden" aria-label="Nästa bana">
+      <span>Nästa</span>
+      <svg viewBox="0 0 48 48"><path d="M12 10l18 14-18 14zM28 10l18 14-18 14z" fill="#fff" stroke="#1d6b26" stroke-width="3" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <!-- gentle rotate hint (portrait) -->
+  <div id="rotateHint" class="hidden">
+    <svg viewBox="0 0 48 48"><rect x="15" y="6" width="18" height="32" rx="4" fill="#fff" stroke="#1b3a5c" stroke-width="3"/><path d="M8 30a18 18 0 0 0 14 12M40 18A18 18 0 0 0 26 6" fill="none" stroke="#1b3a5c" stroke-width="3" stroke-linecap="round"/><path d="M19 41l4 1-1 4M29 3l-4-1 1-4" fill="none" stroke="#1b3a5c" stroke-width="3" stroke-linecap="round"/></svg>
+    <span>Vänd mobilen</span>
+  </div>
+</div>
+
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
