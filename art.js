@@ -397,30 +397,84 @@
     ctx.restore();
   }
 
-  function drawCone(ctx, t) {
+  function drawCone(ctx, t, crush) {
+    crush = crush || 0;
     ctx.save(); ctx.lineJoin = 'round';
-    ctx.fillStyle = '#e8590c'; ctx.strokeStyle = '#7a2a00'; ctx.lineWidth = 2;
-    rr(ctx, -19, -7, 38, 7, 3); ctx.fill(); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-14, -6); ctx.lineTo(-4, -42); ctx.quadraticCurveTo(0, -46, 4, -42); ctx.lineTo(14, -6); ctx.closePath();
-    const g = ctx.createLinearGradient(-14, 0, 14, 0); g.addColorStop(0, '#ff9a3c'); g.addColorStop(1, '#f06a10');
-    ctx.fillStyle = g; ctx.fill();
-    ctx.save(); ctx.clip();
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(-20, -21, 40, 6); ctx.fillRect(-20, -36, 40, 4);
-    ctx.restore();
-    ctx.stroke();
-    // little face
-    const blink = (Math.sin((t || 0) * 1.3) > 0.97) ? 0.2 : 1;
-    ctx.fillStyle = '#2a1200';
-    ctx.beginPath(); ctx.ellipse(-3.5, -27, 1.8, 2.6 * blink, 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(3.5, -27, 1.8, 2.6 * blink, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#2a1200'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(0, -11, 3.2, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    // Standing cone squashes away; a wide pancake with a dizzy face takes its place.
+    const stand = crush <= 0.02 ? 1 : Math.max(0, 1 - (crush - 0.02) / 0.78);
+    if (stand > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = stand;
+      if (crush > 0.001) ctx.scale(1 + crush * 1.05, 1 - crush * 0.86);
+      ctx.fillStyle = '#e8590c'; ctx.strokeStyle = '#7a2a00'; ctx.lineWidth = 2;
+      rr(ctx, -19, -7, 38, 7, 3); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-14, -6); ctx.lineTo(-4, -42); ctx.quadraticCurveTo(0, -46, 4, -42); ctx.lineTo(14, -6); ctx.closePath();
+      const g = ctx.createLinearGradient(-14, 0, 14, 0); g.addColorStop(0, '#ff9a3c'); g.addColorStop(1, '#f06a10');
+      ctx.fillStyle = g; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-20, -21, 40, 6); ctx.fillRect(-20, -36, 40, 4);
+      ctx.restore();
+      ctx.stroke();
+      if (crush < 0.45) {
+        const blink = (Math.sin((t || 0) * 1.3) > 0.97) ? 0.2 : 1;
+        ctx.fillStyle = '#2a1200';
+        ctx.beginPath(); ctx.ellipse(-3.5, -27, 1.8, 2.6 * blink, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(3.5, -27, 1.8, 2.6 * blink, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#2a1200'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(0, -11, 3.2, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (crush > 0.28) {
+      const a = Math.min(1, (crush - 0.28) / 0.42);
+      const spread = 0.78 + 0.22 * Math.min(1, crush);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.scale(spread, 0.62 + 0.38 * Math.min(1, crush));
+      // road shadow + wide orange splat, outlined so it reads on the dirt
+      ctx.fillStyle = 'rgba(80, 40, 10, 0.35)';
+      ctx.beginPath(); ctx.ellipse(3, 6, 64, 9, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#e8590c'; ctx.strokeStyle = '#5a2200'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.ellipse(0, -10, 60, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffb15a';
+      ctx.beginPath(); ctx.ellipse(-16, -16, 24, 6, -0.15, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(0, -10, 60, 16, 0, 0, TAU); ctx.clip();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-66, -16, 132, 7);
+      ctx.fillRect(-66, -4, 132, 5);
+      ctx.restore();
+      // dizzy eyes
+      function dizzyEye(x, y, spin) {
+        ctx.fillStyle = '#fffef6'; ctx.strokeStyle = '#2a1200'; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.arc(x, y, 11, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#2a1200'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(x, y, 6.2, spin, spin + 4.6); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 3.1, spin + 1.4, spin + 4.2); ctx.stroke();
+        ctx.fillStyle = '#2a1200';
+        ctx.beginPath(); ctx.arc(x + Math.cos(spin) * 1.4, y + Math.sin(spin) * 1.4, 2.1, 0, TAU); ctx.fill();
+      }
+      dizzyEye(-20, -14, 0.4);
+      dizzyEye(18, -13, 2.2);
+      // tongue sticking out of the splat
+      ctx.fillStyle = '#ff5d84'; ctx.strokeStyle = '#7a2040'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.ellipse(14, 2, 14, 8, 0.35, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#ffd0dc'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(6, -1); ctx.quadraticCurveTo(16, 4, 22, 0); ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
   }
 
-  function drawRock(ctx) {
+  function drawRock(ctx, crush) {
+    crush = crush || 0;
     ctx.save(); ctx.lineJoin = 'round';
+    ctx.save();
+    if (crush > 0.001) {
+      ctx.translate(0, crush * 18);
+      ctx.scale(1 + crush * 0.22, 1 - crush * 0.78);
+    }
     ctx.beginPath();
     ctx.moveTo(-24, 0); ctx.quadraticCurveTo(-28, -18, -14, -28); ctx.quadraticCurveTo(-2, -38, 12, -30);
     ctx.quadraticCurveTo(26, -24, 25, 0); ctx.closePath();
@@ -436,6 +490,27 @@
     ctx.beginPath(); ctx.arc(-7, -16, 3, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
     ctx.beginPath(); ctx.arc(5, -16, 3, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
     ctx.beginPath(); ctx.arc(-1, -9, 2.5, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+    if (crush > 0.2) {
+      ctx.strokeStyle = '#2a261f'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-4, -20); ctx.lineTo(2, -8); ctx.lineTo(-2, -2);
+      ctx.moveTo(6, -24); ctx.lineTo(14, -12);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (crush > 0.15) {
+      ctx.globalAlpha = Math.min(1, crush);
+      ctx.fillStyle = 'rgba(70, 48, 28, 0.4)';
+      ctx.beginPath(); ctx.ellipse(0, 3, 28 + crush * 10, 8, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#3a3228'; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, 0); ctx.lineTo(-22, 12); ctx.lineTo(-34, 8);
+      ctx.moveTo(4, 0); ctx.lineTo(20, 14); ctx.lineTo(32, 9);
+      ctx.moveTo(0, 1); ctx.lineTo(2, 16);
+      ctx.moveTo(-14, 2); ctx.lineTo(-18, 14);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   }
 

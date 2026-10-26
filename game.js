@@ -121,6 +121,11 @@
     },
     bump() { this.tone(150, { to: 60, dur: 0.28, vol: 0.35 }); this.noise({ type: 'lowpass', f: 500, dur: 0.12, vol: 0.18 }); this.tone(520, { to: 300, dur: 0.22, type: 'triangle', vol: 0.06, at: 0.08 }); },
     land() { this.tone(110, { to: 70, dur: 0.1, vol: 0.12 }); },
+    crunch() {
+      this.noise({ type: 'lowpass', f: 1600, to: 140, dur: 0.22, vol: 0.3, q: 0.7 });
+      this.tone(160, { to: 55, dur: 0.2, vol: 0.24, type: 'triangle' });
+      this.tone(480, { to: 140, dur: 0.09, vol: 0.07, type: 'square' });
+    },
     splash() { this.noise({ f: 1800, to: 350, dur: 0.45, q: 0.7, vol: 0.28 }); this.tone(900, { to: 300, dur: 0.15, vol: 0.06, type: 'triangle' }); },
     honk(at, p) {
       if (!this.ac) return; p = p || 1; at = at || 0;
@@ -170,7 +175,7 @@
     hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [], vehicle: 'car', pickFrom: 'title', pickLock: false, paused: false,
   };
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
-    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0 };
+    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0, rideLift: 0, ridePeak: 0, dropLock: false };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
@@ -181,6 +186,67 @@
   function groundY(x) { return H - GB - G.hillAmp * hillF(x); }
   const carSX = () => Math.max(110, W * 0.24);
   function carWX() { return G.cam + carSX(); }
+
+  /* Monster-truck wheels, in world pixels. Matches drawTruck (±55) * scale. */
+  function truckHalf() { return 55 * VEHICLES.truck.scale; }
+  function smallReach(o) { return (o.type === 'cone' ? 18 : 24) + 20; }
+  function smallHeight(o) {
+    const full = o.type === 'cone' ? 36 : 28;
+    const k = o.crush || 0;
+    if (k >= 1) return o.type === 'cone' ? 4 : 0;
+    return full * (1 - k * 0.9);
+  }
+  function humpAt(o, x) {
+    if (o.hit) return 0;
+    const reach = smallReach(o);
+    const ad = Math.abs(x - o.x);
+    if (ad >= reach) return 0;
+    const lobe = 0.5 * (1 + Math.cos(Math.PI * ad / reach));
+    return smallHeight(o) * lobe;
+  }
+  function liftAt(x) {
+    let h = 0;
+    for (const o of G.objs) {
+      if (o.type !== 'cone' && o.type !== 'rock') continue;
+      h = Math.max(h, humpAt(o, x));
+    }
+    return h;
+  }
+  function truckRide(wx) {
+    const half = truckHalf();
+    const rearLift = liftAt(wx - half);
+    const frontLift = liftAt(wx + half);
+    const rearY = groundY(wx - half) - rearLift;
+    const frontY = groundY(wx + half) - frontLift;
+    return {
+      y: (rearY + frontY) / 2,
+      angle: Math.atan2(frontY - rearY, half * 2),
+      rearLift, frontLift,
+      lift: (rearLift + frontLift) / 2,
+    };
+  }
+  function crushUnderWheel(o, wx) {
+    if (o.hit || o.crush >= 1 || !car.onGround) return;
+    const half = truckHalf();
+    const near = smallReach(o) * 0.45;
+    const rear = wx - half, front = wx + half;
+    const overlap = Math.abs(front - o.x) < smallReach(o) || Math.abs(rear - o.x) < smallReach(o);
+    // Rear wheel presses it flat, so the front wheel can climb the full shape first.
+    const onTop = Math.abs(rear - o.x) < near;
+    if (overlap && !o.greeted) {
+      o.greeted = true;
+      setFace('happy', 0.7);
+    }
+    if (onTop && !o.crushing) {
+      o.crushing = true;
+      Snd.crunch();
+      setFace('happy', 1.1);
+      const gy = groundY(o.x);
+      const dust = o.type === 'rock' ? 'rgba(190,190,198,0.9)' : 'rgba(255,170,70,0.85)';
+      puff(o.x, gy - 4, o.type === 'rock' ? 9 : 5, dust, 1.3);
+      sparkle(o.x, gy - 18, 7);
+    }
+  }
 
   for (let i = 0; i < 6; i++) G.clouds.push({ x: rnd(0, 1400), y: rnd(0.08, 0.38), s: rnd(0.6, 1.15), p: rnd(0.05, 0.12) });
 
@@ -319,7 +385,7 @@
     G.stars = 0; G.state = 'play';
     document.querySelector('meta[name=theme-color]').setAttribute('content', G.pal.theme);
     setFace('normal', 0); G.bannerT = 2.2; skyGrad = null;
-    car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0;
+    car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0; car.rideLift = 0; car.ridePeak = 0; car.dropLock = false;
     car.y = groundY(carWX());
     $('#title').classList.add('hidden');
     $('#celebrate').classList.add('hidden');
@@ -390,21 +456,46 @@
     G.cam += G.speed * dt;
     G.hillAmp += (G.hillTarget - G.hillAmp) * Math.min(1, dt * 0.25);
 
-    // car
-    const wx = carWX(), gy = groundY(wx);
-    if (car.onGround) { car.y = gy; car.vy = 0; }
-    else {
+    // car (truck rides the contour of small obstacles; the red car does not)
+    const wx = carWX();
+    const ride = v.roll ? truckRide(wx) : null;
+    const gy = ride ? ride.y : groundY(wx);
+    if (car.onGround) {
+      if (ride) {
+        if (ride.lift > car.ridePeak) car.ridePeak = ride.lift;
+        const drop = car.ridePeak - ride.lift;
+        if (drop > 10 && !car.dropLock) {
+          car.dropLock = true;
+          car.susp = Math.min(1.7, 0.5 + drop / 20);
+          car.squash = 0.95;
+          Snd.boing(0.58);
+        }
+        if (car.dropLock && ride.lift > car.rideLift + 4) {
+          car.dropLock = false;
+          car.ridePeak = ride.lift;
+        }
+        car.rideLift = ride.lift;
+        car.y = gy;
+        car.vy = 0;
+        car.angle = ride.angle;
+      } else {
+        car.y = gy; car.vy = 0;
+      }
+    } else {
       car.vy += v.grav * dt; car.y += car.vy * dt;
       if (car.y >= gy && car.vy > 0) {
         car.y = gy; car.onGround = true; car.jumps = 0; car.squash = 1; car.vy = 0;
         Snd.land(); puff(wx - 35, gy, 4); puff(wx + 35, gy, 3);
+        if (ride) car.rideLift = ride.lift;
         if (car.jumpBuf > 0) { car.jumpBuf = 0; jump(); }
       }
     }
     if (car.jumpBuf > 0) car.jumpBuf -= dt;
-    const slope = Math.atan2(groundY(wx + 35) - groundY(wx - 35), 70);
-    const ta = car.onGround ? slope : Math.max(-0.3, Math.min(0.35, car.vy * 0.00045));
-    car.angle += (ta - car.angle) * Math.min(1, dt * 10);
+    if (!(ride && car.onGround)) {
+      const slope = Math.atan2(groundY(wx + 35) - groundY(wx - 35), 70);
+      const ta = car.onGround ? slope : Math.max(-0.3, Math.min(0.35, car.vy * 0.00045));
+      car.angle += (ta - car.angle) * Math.min(1, dt * 10);
+    }
     car.wheelRot += G.speed * dt / (v.id === 'truck' ? 34 * v.scale : 15);
     car.squash *= Math.pow(0.0005, dt);
     car.wobble = Math.max(0, car.wobble - dt * 1.3);
@@ -439,13 +530,7 @@
             o.hit = true; Snd.splash(); splash(wx, groundY(wx)); setFace('happy', 0.8); car.hitT = 0.25;
           }
         } else if (v.roll && (o.type === 'cone' || o.type === 'rock')) {
-          if (o.hit || o.passed) continue;
-          const ox0 = o.x - o.w / 2, ox1 = o.x + o.w / 2;
-          if (cx1 > ox0 && cx0 < ox1 && car.onGround && !o.rolled) {
-            o.rolled = true; car.susp = 1; Snd.land();
-            puff(o.x, groundY(o.x), 3);
-          }
-          if (cx0 > ox1) { o.passed = true; if (!o.rolled) setFace('happy', 0.45); }
+          crushUnderWheel(o, wx);
         } else {
           if (o.hit || o.passed) continue;
           const ogy = groundY(o.x);
@@ -463,6 +548,7 @@
     for (const o of G.objs) {
       if (o.react > 0) o.react = Math.max(0, o.react - dt * 1.5);
       if (o.type === 'cone' && o.hit) { o.vy += 1300 * dt; o.ox += o.vx * dt; o.oy += o.vy * dt; o.rot += dt * 9; if (o.oy > 0 && o.vy > 0) { o.oy = 0; o.vy *= -0.35; o.vx *= 0.6; } }
+      if ((o.type === 'cone' || o.type === 'rock') && o.crushing && (o.crush || 0) < 1) o.crush = Math.min(1, (o.crush || 0) + dt * 3.4);
     }
     G.objs = G.objs.filter((o) => o.x - G.cam > -300);
 
@@ -587,8 +673,8 @@
       const sx = o.x - G.cam; if (sx < -200 || sx > W + 200) continue;
       const gy = groundY(o.x);
       ctx.save(); ctx.translate(sx + o.ox, gy + o.oy);
-      if (o.type === 'cone') { ctx.rotate(o.rot); ctx.translate(0, o.react * Math.sin(G.t * 40) * 0); Art.drawCone(ctx, G.t); }
-      else if (o.type === 'rock') { ctx.rotate(Math.sin(G.t * 30) * 0.08 * o.react); Art.drawRock(ctx); }
+      if (o.type === 'cone') { ctx.rotate(o.rot); ctx.translate(0, o.react * Math.sin(G.t * 40) * 0); Art.drawCone(ctx, G.t, o.crush || 0); }
+      else if (o.type === 'rock') { ctx.rotate(Math.sin(G.t * 30) * 0.08 * o.react); Art.drawRock(ctx, o.crush || 0); }
       else if (o.type === 'truck') {
         // shadow
         ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(0, 1, 62, 6, 0, 0, TAU); ctx.fill();
@@ -612,7 +698,7 @@
     if (G.state !== 'pick') {
       const v = veh();
       const wx = carWX(), sx = carSX(), gy = groundY(wx);
-      const hgt = Math.max(0, gy - car.y), sh = Math.max(0.35, 1 - hgt / 220);
+      const hgt = car.onGround ? 0 : Math.max(0, gy - car.y), sh = Math.max(0.35, 1 - hgt / 220);
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.beginPath(); ctx.ellipse(sx + 4, gy + 1, v.shadow * sh, (v.id === 'truck' ? 10 : 7) * sh, 0, 0, TAU); ctx.fill();
       ctx.save();
@@ -788,7 +874,7 @@
   }
 
   // test hook (used by automated screenshots)
-  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, toGarage, GOAL, VEHICLES, groundY, carWX, veh, update };
+  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, toGarage, GOAL, VEHICLES, groundY, carWX, veh, update, truckRide };
 
   resize();
   car.y = groundY(carWX());
