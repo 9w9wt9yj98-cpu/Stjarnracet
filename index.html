@@ -50,6 +50,20 @@
     </button>
   </div>
 
+  <!-- vehicle picker -->
+  <div id="pick" class="overlay hidden">
+    <div id="pickRow">
+      <button id="pickCar" class="vehCard" aria-label="Röd bil">
+        <canvas id="prevCar" width="400" height="280"></canvas>
+        <span>Bil</span>
+      </button>
+      <button id="pickTruck" class="vehCard" aria-label="Blå monstertruck">
+        <canvas id="prevTruck" width="400" height="280"></canvas>
+        <span>Truck</span>
+      </button>
+    </div>
+  </div>
+
   <!-- celebration -->
   <div id="celebrate" class="overlay hidden">
     <div class="bravo">Bra jobbat!</div>
@@ -60,6 +74,7 @@
       <span>Nästa</span>
       <svg viewBox="0 0 48 48"><path d="M12 10l18 14-18 14zM28 10l18 14-18 14z" fill="#fff" stroke="#1d6b26" stroke-width="3" stroke-linejoin="round"/></svg>
     </button>
+    <button id="swapBtn" aria-label="Byt bil">Byt bil</button>
   </div>
 
   <!-- gentle rotate hint (portrait) -->

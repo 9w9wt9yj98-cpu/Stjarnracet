@@ -9,13 +9,28 @@
   const FONT = 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif';
 
   /* ---------------- tuning ---------------- */
-  const GOAL = 20;             // stars per round
-  const GRAV = 1500;           // units/s^2
-  const JUMP_V = 690;          // first jump
-  const JUMP_V2 = 600;         // mid-air extra jump (forgiving)
+  const GOAL = 40;             // stars per round (the one knob for round length)
   const BASE_SPEED = 230;
   const SPEED_STEP = 22;       // per round
   const MAX_SPEED = 360;
+  /* Player blue is not one of the obstacle-truck colours (orange rims). */
+  const PLAYER_TRUCK = { body: '#1a73e8', light: '#9ec4ff', dark: '#0b3c8a', rim: '#ff8a00' };
+  /* Jump numbers are tuned so a normal arc passes through the star rows
+     (alt ~90–165) and still clears a cone, a rock and the big truck.
+     Truck: higher gravity, lower peak, bouncier body, rolls over small obstacles. */
+  const VEHICLES = {
+    car: {
+      id: 'car', jump: 520, jump2: 290, grav: 1060, speed: 1, pitch: 1, scale: 1,
+      bounceBase: 1.5, bounceAmp: 1.3, bounceFast: 0.8, freq: 8, roll: false,
+      box: { x0: -38, x1: 46, y0: -50, y1: -6 }, star: { x: 6, y: -40, r: 54 }, shadow: 66,
+    },
+    truck: {
+      id: 'truck', jump: 500, jump2: 280, grav: 1180, speed: 1, pitch: 0.74, scale: 0.8,
+      bounceBase: 8, bounceAmp: 5.5, bounceFast: 2.2, freq: 13, roll: true,
+      box: { x0: -40, x1: 46, y0: -102, y1: -42 }, star: { x: 10, y: -74, r: 62 }, shadow: 116,
+    },
+  };
+  function veh() { return VEHICLES[G.vehicle] || VEHICLES.car; }
 
   const PALETTES = [
     { sky: ['#3fb4ff', '#c4ecff'], sun: '#ffd23b', farFar: '#a9dcf0', far: '#8fd47c', mid: '#5fc24e', midDark: '#47a83b',
@@ -122,6 +137,7 @@
       [1047, 1319, 1568, 2093].forEach((f) => this.tone(f, { type: 'sine', dur: 1.2, vol: 0.05, at: 1.1, attack: 0.02 }));
     },
     go() { [392, 523, 784].forEach((f, i) => this.tone(f, { type: 'triangle', dur: 0.18, vol: 0.18, at: i * 0.1 })); },
+    yay() { [523, 659, 784].forEach((f, i) => this.tone(f, { type: 'triangle', dur: 0.11, vol: 0.2, at: i * 0.06 })); },
     pop() { this.tone(500, { to: 900, dur: 0.1, vol: 0.12, slide: 0.06 }); },
     startEngine() {
       const ac = this.ac;
@@ -135,11 +151,11 @@
       o1.start(); o2.start(); lfo.start();
       this.eng = { o1, o2, lfo, f, g };
     },
-    engine(speed, on) {
+    engine(speed, on, pitch) {
       if (!this.eng) return;
-      const t = this.ac.currentTime, e = this.eng;
-      e.o1.frequency.setTargetAtTime(38 + speed * 0.11, t, 0.15);
-      e.o2.frequency.setTargetAtTime(57 + speed * 0.16, t, 0.15);
+      const t = this.ac.currentTime, e = this.eng, p = pitch || 1;
+      e.o1.frequency.setTargetAtTime((38 + speed * 0.11) * p, t, 0.15);
+      e.o2.frequency.setTargetAtTime((57 + speed * 0.16) * p, t, 0.15);
       e.lfo.frequency.setTargetAtTime(8 + speed * 0.02, t, 0.2);
       e.f.frequency.setTargetAtTime(220 + speed * 0.6, t, 0.2);
       e.g.gain.setTargetAtTime(on ? 0.045 : 0, t, 0.25);
@@ -151,10 +167,10 @@
     state: 'title', round: 1, stars: 0, total: 0, cam: 0, camY: 0, speed: 150, baseSpeed: BASE_SPEED, t: 0,
     nextSpawn: 600, objs: [], parts: [], fly: [], bgTrucks: [], confetti: [], celebT: 0,
     hillAmp: 40, hillTarget: 40, pal: PALETTES[0], bannerT: 0, input: { fast: false, slow: false },
-    hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [],
+    hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [], vehicle: 'car', pickFrom: 'title', pickLock: false, paused: false,
   };
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
-    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0 };
+    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0 };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
@@ -171,7 +187,8 @@
   /* ---------------- spawning ---------------- */
   function addStar(x, alt) { G.objs.push({ type: 'star', x, alt, got: false, ph: Math.random() * TAU }); }
   function addObs(type, x, extra) {
-    const def = { cone: [26, 38], rock: [40, 30], truck: [70, 78], puddle: [110, 0] }[type];
+    /* Truck hit-box is a little inside the drawing so the lower jump still clears the cab. */
+    const def = { cone: [26, 38], rock: [40, 30], truck: [64, 72], puddle: [110, 0] }[type];
     G.objs.push(Object.assign({ type, x, w: def[0], h: def[1], hit: false, passed: false, ox: 0, oy: 0, vx: 0, vy: 0, rot: 0, react: 0, color: Math.floor(Math.random() * 4) }, extra || {}));
   }
   function spawn() {
@@ -236,11 +253,12 @@
   /* ---------------- actions ---------------- */
   function jump() {
     if (G.state !== 'play') return;
+    const v = veh();
     if (car.onGround) {
-      car.vy = -JUMP_V; car.onGround = false; car.jumps = 1; car.squash = -1;
-      Snd.boing(1); puff(carWX() - 30, car.y, 5);
+      car.vy = -v.jump; car.onGround = false; car.jumps = 1; car.squash = -1;
+      Snd.boing(v.id === 'truck' ? 0.78 : 1); puff(carWX() - 30, car.y, 5);
     } else if (car.jumps < 2) {
-      car.vy = -JUMP_V2; car.jumps = 2; Snd.boing(1.3);
+      car.vy = -v.jump2; car.jumps = 2; Snd.boing(v.id === 'truck' ? 0.95 : 1.25);
       sparkle(carWX(), car.y - 10, 8);
     } else car.jumpBuf = 0.15; // remember the tap, jump on landing
   }
@@ -261,7 +279,8 @@
     setFace('oops', 1.0);
     car.wobble = 1; car.hitT = 0.7;
     car.onGround = false; car.jumps = 1;
-    car.vy = o.type === 'truck' ? -720 : -440;
+    const bumpH = o.type === 'truck' ? 150 : 62;
+    car.vy = -Math.sqrt(2 * veh().grav * bumpH);
     if (o.type === 'cone') { o.vx = 260; o.vy = -420; }
     if (o.type === 'truck') Snd.honk(0.25, 1);
     sparkle(carWX() + 40, car.y - 30, 6);
@@ -285,25 +304,67 @@
     setTimeout(() => { if (G.state === 'celebrate') { $('#nextBtn').classList.remove('hidden'); Snd.pop(); } }, 1400);
     G.input.fast = G.input.slow = false;
   }
+  function enterPlay(advance) {
+    if (advance) {
+      G.round++;
+      G.pal = PALETTES[(G.round - 1) % PALETTES.length];
+      G.baseSpeed = Math.min(MAX_SPEED, BASE_SPEED + (G.round - 1) * SPEED_STEP);
+      G.hillTarget = Math.min(72, 40 + (G.round - 1) * 8);
+      G.patternCount = 1;
+      G.nextSpawn = G.cam + W + 150;
+    } else {
+      G.round = 1; G.pal = PALETTES[0]; G.baseSpeed = BASE_SPEED; G.hillTarget = 40;
+      G.patternCount = 0; G.nextSpawn = G.cam + W * 0.8;
+    }
+    G.stars = 0; G.state = 'play';
+    document.querySelector('meta[name=theme-color]').setAttribute('content', G.pal.theme);
+    setFace('normal', 0); G.bannerT = 2.2; skyGrad = null;
+    car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0;
+    car.y = groundY(carWX());
+    $('#title').classList.add('hidden');
+    $('#celebrate').classList.add('hidden');
+    $('#pick').classList.add('hidden');
+    $('#controls').classList.remove('hidden');
+    Snd.go();
+  }
   function nextRound() {
     if (G.state !== 'celebrate') return;
-    G.round++; G.stars = 0;
-    G.pal = PALETTES[(G.round - 1) % PALETTES.length];
-    document.querySelector('meta[name=theme-color]').setAttribute('content', G.pal.theme);
-    G.baseSpeed = Math.min(MAX_SPEED, BASE_SPEED + (G.round - 1) * SPEED_STEP);
-    G.hillTarget = Math.min(72, 40 + (G.round - 1) * 8);
-    G.state = 'play'; G.nextSpawn = G.cam + W + 150; G.patternCount = 1;
-    setFace('normal', 0); G.bannerT = 2.2; skyGrad = null;
-    $('#celebrate').classList.add('hidden'); $('#controls').classList.remove('hidden');
-    Snd.go();
+    enterPlay(true);
+  }
+  function openPick(from) {
+    G.state = 'pick'; G.pickFrom = from; G.pickLock = false;
+    $('#title').classList.add('hidden');
+    $('#celebrate').classList.add('hidden');
+    $('#controls').classList.add('hidden');
+    $('#pickCar').classList.remove('chosen');
+    $('#pickTruck').classList.remove('chosen');
+    $('#pick').classList.remove('hidden');
   }
   function startGame() {
     if (G.state !== 'title') return;
     Snd.unlock();
-    G.state = 'play'; G.round = 1; G.stars = 0; G.nextSpawn = G.cam + W * 0.8; G.patternCount = 0;
-    G.bannerT = 2.2;
-    $('#title').classList.add('hidden'); $('#controls').classList.remove('hidden');
-    Snd.go();
+    openPick('title');
+  }
+  function chooseVehicle(id) {
+    if (G.state !== 'pick' || G.pickLock) return;
+    G.pickLock = true;
+    G.vehicle = id === 'truck' ? 'truck' : 'car';
+    Snd.unlock();
+    Snd.yay();
+    setFace('happy', 1.4);
+    const el = $(G.vehicle === 'truck' ? '#pickTruck' : '#pickCar');
+    el.classList.add('chosen');
+    const from = G.pickFrom;
+    setTimeout(() => {
+      G.pickLock = false;
+      el.classList.remove('chosen');
+      if (G.state !== 'pick') return;
+      enterPlay(from === 'round');
+    }, 680);
+  }
+  function toGarage() {
+    if (G.state !== 'celebrate') return;
+    openPick('round');
   }
 
   /* ---------------- background trucks (mid layer, parallax 0.4) ---------------- */
@@ -319,10 +380,11 @@
   /* ---------------- update ---------------- */
   function update(dt) {
     G.t += dt;
+    const v = veh();
     let target;
-    if (G.state === 'title') target = 140;
+    if (G.state === 'title' || G.state === 'pick') target = 140;
     else if (G.state === 'celebrate') target = 90;
-    else target = G.baseSpeed * (G.input.fast ? 1.45 : G.input.slow ? 0.5 : 1);
+    else target = G.baseSpeed * v.speed * (G.input.fast ? 1.45 : G.input.slow ? 0.5 : 1);
     if (car.hitT > 0) { car.hitT -= dt; target *= 0.6; }
     G.speed += (target - G.speed) * Math.min(1, dt * 2.5);
     G.cam += G.speed * dt;
@@ -332,7 +394,7 @@
     const wx = carWX(), gy = groundY(wx);
     if (car.onGround) { car.y = gy; car.vy = 0; }
     else {
-      car.vy += GRAV * dt; car.y += car.vy * dt;
+      car.vy += v.grav * dt; car.y += car.vy * dt;
       if (car.y >= gy && car.vy > 0) {
         car.y = gy; car.onGround = true; car.jumps = 0; car.squash = 1; car.vy = 0;
         Snd.land(); puff(wx - 35, gy, 4); puff(wx + 35, gy, 3);
@@ -343,10 +405,11 @@
     const slope = Math.atan2(groundY(wx + 35) - groundY(wx - 35), 70);
     const ta = car.onGround ? slope : Math.max(-0.3, Math.min(0.35, car.vy * 0.00045));
     car.angle += (ta - car.angle) * Math.min(1, dt * 10);
-    car.wheelRot += G.speed * dt / 15;
+    car.wheelRot += G.speed * dt / (v.id === 'truck' ? 34 * v.scale : 15);
     car.squash *= Math.pow(0.0005, dt);
     car.wobble = Math.max(0, car.wobble - dt * 1.3);
-    car.bp += dt * (8 + G.speed / 30);
+    car.susp = Math.max(0, car.susp - dt * 2.4);
+    car.bp += dt * (v.freq + G.speed / 30);
     if (car.faceT > 0) { car.faceT -= dt; if (car.faceT <= 0) car.face = 'normal'; }
     car.blinkT -= dt;
     if (car.blinkT <= 0) { car.blinkA = 0; car.blinkT = rnd(2, 4.5); }
@@ -363,18 +426,26 @@
     if (G.state === 'play') {
       while (G.nextSpawn < G.cam + W + 300) spawn();
       // collisions
-      const cx0 = wx - 38, cx1 = wx + 46, cy0 = car.y - 50, cy1 = car.y - 6;
-      const ccx = wx + 6, ccy = car.y - 40;
+      const cx0 = wx + v.box.x0, cx1 = wx + v.box.x1, cy1 = car.y + v.box.y1;
+      const ccx = wx + v.star.x, ccy = car.y + v.star.y, rr = v.star.r;
       for (const o of G.objs) {
         if (o.type === 'star') {
           if (o.got) continue;
           const sx = o.x, sy = groundY(o.x) - o.alt;
           const dx = sx - ccx, dy = sy - ccy;
-          if (dx * dx + dy * dy < 54 * 54) collect(o, sx, sy);
+          if (dx * dx + dy * dy < rr * rr) collect(o, sx, sy);
         } else if (o.type === 'puddle') {
           if (!o.hit && Math.abs(wx - o.x) < o.w / 2 && car.onGround) {
             o.hit = true; Snd.splash(); splash(wx, groundY(wx)); setFace('happy', 0.8); car.hitT = 0.25;
           }
+        } else if (v.roll && (o.type === 'cone' || o.type === 'rock')) {
+          if (o.hit || o.passed) continue;
+          const ox0 = o.x - o.w / 2, ox1 = o.x + o.w / 2;
+          if (cx1 > ox0 && cx0 < ox1 && car.onGround && !o.rolled) {
+            o.rolled = true; car.susp = 1; Snd.land();
+            puff(o.x, groundY(o.x), 3);
+          }
+          if (cx0 > ox1) { o.passed = true; if (!o.rolled) setFace('happy', 0.45); }
         } else {
           if (o.hit || o.passed) continue;
           const ogy = groundY(o.x);
@@ -413,13 +484,13 @@
     for (const b of G.bgTrucks) {
       b.lx += b.v * dt; b.rot += b.v * dt / 14; b.bp += dt * 7;
       const sx = b.lx - lcam;
-      if (!b.honked && sx > W * 0.3 && sx < W * 0.8 && G.state !== 'title') { b.honked = true; if (G.t - Snd.lastHonk > 3) { Snd.lastHonk = G.t; Snd.honk(0, 1.25); } }
+      if (!b.honked && sx > W * 0.3 && sx < W * 0.8 && (G.state === 'play' || G.state === 'celebrate')) { b.honked = true; if (G.t - Snd.lastHonk > 3) { Snd.lastHonk = G.t; Snd.honk(0, 1.25); } }
     }
     G.bgTrucks = G.bgTrucks.filter((b) => { const sx = b.lx - lcam; return sx > -260 && sx < W + 300; });
 
     for (const c of G.clouds) { c.x -= (G.speed * c.p + 6) * dt; if (c.x < -150) { c.x = W + rnd(50, 300); c.y = rnd(0.08, 0.38); c.s = rnd(0.6, 1.15); } }
 
-    Snd.engine(G.speed, G.state !== 'title');
+    Snd.engine(G.speed, G.state === 'play' || G.state === 'celebrate', v.pitch);
   }
 
   /* ---------------- render ---------------- */
@@ -537,19 +608,32 @@
       Art.drawStar(ctx, sx, groundY(o.x) - o.alt + bob, 17 + Math.sin(G.t * 5 + o.ph) * 1.2, Math.sin(G.t * 2 + o.ph) * 0.15, false);
     }
 
-    // car shadow + car
-    const wx = carWX(), sx = carSX(), gy = groundY(wx);
-    const hgt = Math.max(0, gy - car.y), sh = Math.max(0.35, 1 - hgt / 220);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(sx + 4, gy + 1, 66 * sh, 7 * sh, 0, 0, TAU); ctx.fill();
-    ctx.save();
-    ctx.translate(sx, car.y);
-    ctx.rotate(car.angle + Math.sin(G.t * 28) * 0.12 * car.wobble);
-    const sq = car.squash;
-    ctx.scale(1 + sq * 0.08, 1 - sq * 0.1);
-    const blink = car.blinkA >= 0 ? Math.sin(Math.min(1, car.blinkA / 0.16) * Math.PI) : 0;
-    const bounce = car.onGround ? 1.5 + Math.sin(car.bp) * 1.3 + (G.input.fast ? Math.sin(car.bp * 2.3) * 0.8 : 0) : 3;
-    Art.drawCar(ctx, { face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY: car.onGround ? 0 : (car.vy < 0 ? -0.8 : 0.6) });
-    ctx.restore();
+    // car shadow + car (hidden while the picker is up)
+    if (G.state !== 'pick') {
+      const v = veh();
+      const wx = carWX(), sx = carSX(), gy = groundY(wx);
+      const hgt = Math.max(0, gy - car.y), sh = Math.max(0.35, 1 - hgt / 220);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath(); ctx.ellipse(sx + 4, gy + 1, v.shadow * sh, (v.id === 'truck' ? 10 : 7) * sh, 0, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(sx, car.y);
+      ctx.rotate(car.angle + Math.sin(G.t * 28) * 0.12 * car.wobble);
+      const sq = car.squash;
+      ctx.scale(1 + sq * 0.08, 1 - sq * 0.1);
+      const blink = car.blinkA >= 0 ? Math.sin(Math.min(1, car.blinkA / 0.16) * Math.PI) : 0;
+      const lookY = car.onGround ? 0 : (car.vy < 0 ? -0.8 : 0.6);
+      let bounce = car.onGround
+        ? v.bounceBase + Math.sin(car.bp) * v.bounceAmp + (G.input.fast ? Math.sin(car.bp * 2.3) * v.bounceFast : 0)
+        : 3;
+      if (v.id === 'truck') bounce += car.susp * 16;
+      if (v.id === 'truck') {
+        ctx.scale(v.scale, v.scale);
+        Art.drawTruck(ctx, { palette: PLAYER_TRUCK, face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY, t: G.t });
+      } else {
+        Art.drawCar(ctx, { face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY });
+      }
+      ctx.restore();
+    }
 
     // particles (world)
     for (const p of G.parts) {
@@ -563,7 +647,8 @@
     ctx.restore(); // camY
 
     // HUD
-    if (G.state !== 'title') drawHUD();
+    if (G.state === 'play' || G.state === 'celebrate') drawHUD();
+    drawPreviews();
     // confetti
     for (const c of G.confetti) {
       ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.scale(1, Math.cos(c.life * 8 + c.rot));
@@ -582,7 +667,7 @@
   }
 
   function drawHUD() {
-    const w = 210, h = 56, x = W / 2 - w / 2, y = 10;
+    const w = 248, h = 58, x = W / 2 - w / 2, y = 10;
     const pop = 1 + G.hudPop * 0.12;
     ctx.save(); ctx.translate(W / 2, y + h / 2); ctx.scale(pop, pop); ctx.translate(-W / 2, -(y + h / 2));
     ctx.fillStyle = 'rgba(27,58,92,0.25)'; Art.rr(ctx, x, y + 4, w, h, 28); ctx.fill();
@@ -597,7 +682,7 @@
     const bx = x + 62, bw = w - 80, by = y + h - 18;
     ctx.fillStyle = '#e3ebf3'; Art.rr(ctx, bx, by, bw, 9, 4.5); ctx.fill();
     const p = Math.min(1, G.stars / GOAL);
-    if (p > 0) { const gr = ctx.createLinearGradient(bx, 0, bx + bw, 0); gr.addColorStop(0, '#ffd21f'); gr.addColorStop(1, '#ff9f1a'); ctx.fillStyle = gr; Art.rr(ctx, bx, by, Math.max(9, bw * p), 9, 4.5); ctx.fill(); }
+    if (p > 0) { const gr = ctx.createLinearGradient(bx, 0, bx + bw, 0); gr.addColorStop(0, '#ffd21f'); gr.addColorStop(1, '#ff9f1a'); ctx.fillStyle = gr; Art.rr(ctx, bx, by, Math.max(8, bw * p), 9, 4.5); ctx.fill(); }
     ctx.restore();
     // flying stars
     for (const f of G.fly) {
@@ -612,7 +697,7 @@
   function loop(ts) {
     const dt = Math.min(0.05, Math.max(0, (ts - last) / 1000 || 0));
     last = ts;
-    update(dt);
+    if (!G.paused) update(dt);
     render();
     requestAnimationFrame(loop);
   }
@@ -628,6 +713,9 @@
   press($('#slowBtn'), () => { G.input.slow = true; G.input.fast = false; }, () => { G.input.slow = false; });
   press($('#startBtn'), null, startGame);
   press($('#nextBtn'), null, nextRound);
+  press($('#swapBtn'), null, toGarage);
+  press($('#pickCar'), null, () => chooseVehicle('car'));
+  press($('#pickTruck'), null, () => chooseVehicle('truck'));
   const muteBtn = $('#muteBtn');
   muteBtn.classList.toggle('muted', Snd.muted);
   press(muteBtn, null, () => { Snd.setMuted(!Snd.muted); muteBtn.classList.toggle('muted', Snd.muted); });
@@ -658,8 +746,49 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  function fitPreview(canvas) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w < 2 || h < 2) return null;
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+    const c = canvas.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+    return { c, w, h };
+  }
+  function drawPreviews() {
+    const pick = $('#pick');
+    if (!pick || pick.classList.contains('hidden')) return;
+    const blink = Math.sin(G.t * 3) > 0.92 ? 1 : 0;
+    const pc = fitPreview($('#prevCar'));
+    if (pc) {
+      const happy = $('#pickCar').classList.contains('chosen');
+      pc.c.save();
+      pc.c.translate(pc.w * 0.52, pc.h * 0.8);
+      const s = Math.min(pc.w / 200, pc.h / 140);
+      pc.c.scale(s, s);
+      pc.c.fillStyle = 'rgba(27,58,92,0.12)';
+      pc.c.beginPath(); pc.c.ellipse(0, 4, 62, 9, 0, 0, TAU); pc.c.fill();
+      Art.drawCar(pc.c, { face: happy ? 'happy' : 'normal', blink, wheelRot: G.t * 3, bounce: 2 + Math.sin(G.t * 6) * 1.4, lookX: 1 });
+      pc.c.restore();
+    }
+    const pt = fitPreview($('#prevTruck'));
+    if (pt) {
+      const happy = $('#pickTruck').classList.contains('chosen');
+      pt.c.save();
+      pt.c.translate(pt.w * 0.5, pt.h * 0.86);
+      const s = Math.min(pt.w / 250, pt.h / 190);
+      pt.c.scale(s, s);
+      pt.c.fillStyle = 'rgba(27,58,92,0.12)';
+      pt.c.beginPath(); pt.c.ellipse(0, 2, 78, 10, 0, 0, TAU); pt.c.fill();
+      Art.drawTruck(pt.c, { palette: PLAYER_TRUCK, face: happy ? 'happy' : 'normal', blink, wheelRot: G.t * 2.2, bounce: 7 + Math.sin(G.t * 7) * 4, lookX: 1, t: G.t });
+      pt.c.restore();
+    }
+  }
+
   // test hook (used by automated screenshots)
-  window.__game = { G, car, celebrate, jump, nextRound, startGame, GOAL };
+  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, toGarage, GOAL, VEHICLES, groundY, carWX, veh, update };
 
   resize();
   car.y = groundY(carWX());

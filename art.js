@@ -273,7 +273,7 @@
 
   function drawTruck(ctx, o) {
     o = o || {};
-    const c = TRUCK_COLORS[(o.color || 0) % TRUCK_COLORS.length];
+    const c = o.palette || TRUCK_COLORS[(o.color || 0) % TRUCK_COLORS.length];
     const OUT = '#1d1a2e';
     const face = o.face || 'normal';
     const rot = o.wheelRot || 0;
@@ -364,6 +364,10 @@
         ctx.save(); ctx.translate(zx, zy); ctx.scale(s, s); ctx.strokeText('z', 0, 0); ctx.fillText('z', 0, 0); ctx.restore();
       }
       ctx.globalAlpha = 1;
+    }
+    if (face === 'oops') {
+      ctx.fillStyle = '#8fd8ff'; ctx.strokeStyle = '#2b7de9'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(36, -158); ctx.quadraticCurveTo(50, -140, 42, -134); ctx.quadraticCurveTo(30, -138, 36, -158); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
 
