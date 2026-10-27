@@ -369,6 +369,22 @@
       ctx.fillStyle = '#8fd8ff'; ctx.strokeStyle = '#2b7de9'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(36, -158); ctx.quadraticCurveTo(50, -140, 42, -134); ctx.quadraticCurveTo(30, -138, 36, -158); ctx.fill(); ctx.stroke();
     }
+    // exhaust stack at the back of the bed. Tip sits near (-96, -162); game.js matches that.
+    ctx.fillStyle = '#4b5160'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.6;
+    rr(ctx, -104, -148, 20, 46, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2c313c';
+    rr(ctx, -110, -162, 32, 16, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = o.flame ? '#ffd24a' : '#6a5344';
+    ctx.beginPath(); ctx.ellipse(-94, -154, 8, 4.5, 0, 0, TAU); ctx.fill();
+    if (o.flame) {
+      const flick = 0.82 + Math.sin((o.t || 0) * 32) * 0.18;
+      ctx.fillStyle = '#ff8a14';
+      ctx.beginPath(); ctx.ellipse(-108, -176, 11 * flick, 16 * flick, -0.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffd23b';
+      ctx.beginPath(); ctx.ellipse(-102, -168, 6 * flick, 10 * flick, -0.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#fff6c2';
+      ctx.beginPath(); ctx.ellipse(-98, -162, 3, 5, -0.3, 0, TAU); ctx.fill();
+    }
     ctx.restore();
 
     wheel(ctx, -55, -34, 34, rot, c.rim, c.dark, true);

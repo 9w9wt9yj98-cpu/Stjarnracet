@@ -126,6 +126,17 @@
       this.tone(160, { to: 55, dur: 0.2, vol: 0.24, type: 'triangle' });
       this.tone(480, { to: 140, dur: 0.09, vol: 0.07, type: 'square' });
     },
+    vroom() {
+      this.tone(96, { to: 176, dur: 0.18, type: 'triangle', vol: 0.11 });
+      this.tone(68, { to: 124, dur: 0.16, type: 'square', vol: 0.04 });
+      this.noise({ type: 'lowpass', f: 480, to: 150, dur: 0.16, vol: 0.07, q: 0.6 });
+      this.tone(168, { to: 96, dur: 0.07, type: 'square', vol: 0.045, at: 0.09 });
+      this.tone(176, { to: 104, dur: 0.06, type: 'square', vol: 0.035, at: 0.17 });
+    },
+    screech() {
+      this.noise({ type: 'bandpass', f: 1700, to: 620, dur: 0.22, q: 3.2, vol: 0.07 });
+      this.tone(280, { to: 170, dur: 0.14, type: 'triangle', vol: 0.04 });
+    },
     splash() { this.noise({ f: 1800, to: 350, dur: 0.45, q: 0.7, vol: 0.28 }); this.tone(900, { to: 300, dur: 0.15, vol: 0.06, type: 'triangle' }); },
     honk(at, p) {
       if (!this.ac) return; p = p || 1; at = at || 0;
@@ -175,7 +186,8 @@
     hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [], vehicle: 'car', pickFrom: 'title', pickLock: false, paused: false,
   };
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
-    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0, rideLift: 0, ridePeak: 0, dropLock: false };
+    wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0, rideLift: 0, ridePeak: 0, dropLock: false,
+    stunt: 0, stuntV: 0, stuntShow: 0, stoppieT: 0, flameT: 0, wasFast: false, wasSlow: false };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
@@ -246,6 +258,124 @@
       puff(o.x, gy - 4, o.type === 'rock' ? 9 : 5, dust, 1.3);
       sparkle(o.x, gy - 18, 7);
     }
+  }
+
+  /* Wheelie / stoppie. Negative stunt = nose up. Visual only — hitboxes stay put. */
+  const WHEELIE = -20 * Math.PI / 180;
+  const STOPPIE = 17 * Math.PI / 180;
+  function bodyBounce(v) {
+    let bounce = car.onGround
+      ? v.bounceBase + Math.sin(car.bp) * v.bounceAmp + (G.input.fast ? Math.sin(car.bp * 2.3) * v.bounceFast : 0)
+      : 3;
+    if (v.id === 'truck') bounce += car.susp * 16;
+    return bounce;
+  }
+  function truckNozzle(bounce) {
+    const s = VEHICLES.truck.scale;
+    const half = 55 * s;
+    const st = car.stuntShow || 0;
+    const pivot = st < -0.02 ? -half : st > 0.02 ? half : 0;
+    const lx = -96, ly = -162 - (bounce || 0);
+    let x = lx * s - pivot, y = ly * s;
+    const cs = Math.cos(st), sn = Math.sin(st);
+    const rx = x * cs - y * sn, ry = x * sn + y * cs;
+    x = rx + pivot; y = ry;
+    const a = car.angle, c2 = Math.cos(a), s2 = Math.sin(a);
+    const wx = carWX() + x * c2 - y * s2;
+    const wy = car.y + x * s2 + y * c2;
+    let dx = -0.45, dy = -1;
+    const ddx = dx * cs - dy * sn, ddy = dx * sn + dy * cs;
+    dx = ddx * c2 - ddy * s2; dy = ddx * s2 + ddy * c2;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: wx, y: wy, dx: dx / len, dy: dy / len };
+  }
+  function exhaustPuff(n, smokeN, burst) {
+    if (G.parts.length > 90) return;
+    const nz = truckNozzle(bodyBounce(VEHICLES.truck));
+    const px = -nz.dy, py = nz.dx;
+    for (let i = 0; i < smokeN; i++) {
+      const sp = rnd(18, 50);
+      G.parts.push({ k: 'smoke', x: nz.x + rnd(-4, 2), y: nz.y + rnd(-4, 2), vx: nz.dx * sp + px * rnd(-20, 20), vy: nz.dy * sp + py * rnd(-20, 20), life: 0, max: rnd(0.35, 0.55), r: rnd(5, 9), c: 'rgba(186,186,196,0.45)', g: -20 });
+    }
+    for (let i = 0; i < n; i++) {
+      const sp = burst ? rnd(110, 240) : rnd(50, 130);
+      const hot = Math.random() < 0.5;
+      G.parts.push({
+        k: 'flame', x: nz.x + rnd(-3, 3), y: nz.y + rnd(-3, 3),
+        vx: nz.dx * sp + px * rnd(-50, 50), vy: nz.dy * sp + py * rnd(-40, 40),
+        life: 0, max: burst ? rnd(0.28, 0.42) : rnd(0.16, 0.3),
+        r: burst ? rnd(8, 16) : rnd(5, 10),
+        c: hot ? 'rgba(255,214,50,0.95)' : 'rgba(255,122,20,0.92)', g: -30,
+      });
+    }
+  }
+  function updateStunts(dt, v, ride) {
+    const truck = v.id === 'truck' && G.state === 'play';
+    if (!truck) {
+      car.stuntV += (0 - car.stunt) * 48 * dt;
+      car.stuntV *= Math.exp(-9 * dt);
+      car.stunt += car.stuntV * dt;
+      car.stuntShow = 0;
+      car.stoppieT = 0;
+      car.wasFast = false;
+      car.wasSlow = false;
+      return;
+    }
+    const fastNow = !!G.input.fast;
+    const slowNow = !!G.input.slow && !fastNow;
+    const fastEdge = fastNow && !car.wasFast;
+    const slowEdge = slowNow && !car.wasSlow;
+    const climbing = !!(ride && car.onGround && (ride.lift > 4 || Math.abs(ride.angle) > 0.08));
+    const allow = car.onGround && !climbing;
+    if (fastEdge) {
+      Snd.vroom();
+      exhaustPuff(9, 4, true);
+      setFace('happy', 0.7);
+      car.flameT = 0;
+    }
+    if (!fastNow && car.wasFast && car.onGround) {
+      car.susp = Math.min(1.4, car.susp + 0.45);
+      car.squash = Math.max(car.squash, 0.4);
+    }
+    const cruise = G.baseSpeed * v.speed;
+    if (slowEdge && allow && G.speed >= cruise * 0.82) {
+      car.stoppieT = 0.45;
+      Snd.screech();
+      setFace('happy', 0.55);
+      const half = truckHalf();
+      puff(carWX() + half, car.y, 4, 'rgba(120,110,100,0.6)', 1.5);
+      puff(carWX() - half, car.y, 3, 'rgba(200,196,190,0.75)', 1.2);
+    }
+    let target = 0;
+    if (car.stoppieT > 0) {
+      const was = car.stoppieT;
+      car.stoppieT = Math.max(0, car.stoppieT - dt);
+      if (was > 0 && car.stoppieT === 0 && car.onGround) {
+        car.susp = Math.min(1.4, car.susp + 0.55);
+        car.squash = Math.max(car.squash, 0.5);
+      }
+      if (allow && !fastNow) target = STOPPIE;
+    }
+    if (fastNow && allow) target = WHEELIE;
+    car.stuntV += (target - car.stunt) * 55 * dt;
+    car.stuntV *= Math.exp(-9 * dt);
+    car.stunt += car.stuntV * dt;
+    if (car.stunt > 0.5) car.stunt = 0.5;
+    else if (car.stunt < -0.5) car.stunt = -0.5;
+    let grip = 1;
+    if (!car.onGround) grip = 0;
+    else if (ride) grip = Math.max(0, 1 - Math.max(ride.lift / 10, Math.abs(ride.angle) / 0.16));
+    const wob = fastNow && allow ? Math.sin(G.t * 16) * 0.03 : 0;
+    car.stuntShow = car.stunt * grip + wob * grip;
+    if (fastNow) {
+      car.flameT -= dt;
+      if (car.flameT <= 0) {
+        car.flameT = 0.045;
+        exhaustPuff(2, 1, false);
+      }
+    }
+    car.wasFast = fastNow;
+    car.wasSlow = slowNow;
   }
 
   for (let i = 0; i < 6; i++) G.clouds.push({ x: rnd(0, 1400), y: rnd(0.08, 0.38), s: rnd(0.6, 1.15), p: rnd(0.05, 0.12) });
@@ -386,6 +516,7 @@
     document.querySelector('meta[name=theme-color]').setAttribute('content', G.pal.theme);
     setFace('normal', 0); G.bannerT = 2.2; skyGrad = null;
     car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0; car.rideLift = 0; car.ridePeak = 0; car.dropLock = false;
+    car.stunt = 0; car.stuntV = 0; car.stuntShow = 0; car.stoppieT = 0; car.flameT = 0; car.wasFast = !!G.input.fast; car.wasSlow = !!G.input.slow && !G.input.fast;
     car.y = groundY(carWX());
     $('#title').classList.add('hidden');
     $('#celebrate').classList.add('hidden');
@@ -505,6 +636,7 @@
     car.blinkT -= dt;
     if (car.blinkT <= 0) { car.blinkA = 0; car.blinkT = rnd(2, 4.5); }
     if (car.blinkA >= 0) { car.blinkA += dt; if (car.blinkA > 0.16) car.blinkA = -1; }
+    updateStunts(dt, v, ride);
     car.dustT -= dt;
     if (car.onGround && car.dustT <= 0) { car.dustT = G.input.fast ? 0.05 : 0.12; puff(wx - 50, gy - 2, 1, 'rgba(230,200,150,0.7)'); }
     if (G.input.fast && G.state === 'play' && Math.random() < dt * 20) G.parts.push({ k: 'dust', x: wx - 72, y: car.y - 18, vx: -120, vy: rnd(-20, 5), life: 0, max: 0.35, r: rnd(3, 5), c: 'rgba(200,200,210,0.8)' });
@@ -553,7 +685,13 @@
     G.objs = G.objs.filter((o) => o.x - G.cam > -300);
 
     // particles
-    for (const p of G.parts) { p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.g) p.vy += p.g * dt; if (p.k === 'dust') { p.vx *= 0.96; p.r += dt * 10; } }
+    for (const p of G.parts) {
+      p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.g) p.vy += p.g * dt;
+      if (p.k === 'dust') { p.vx *= 0.96; p.r += dt * 10; }
+      else if (p.k === 'flame') p.r += dt * 16;
+      else if (p.k === 'smoke') { p.r += dt * 12; p.vx *= 0.98; }
+    }
     G.parts = G.parts.filter((p) => p.life < p.max);
     for (const c of G.confetti) { c.life += dt; c.vy += 500 * dt; c.vx *= Math.pow(0.4, dt); c.vy = Math.min(c.vy, 160); c.x += c.vx * dt + Math.sin(c.life * 6 + c.rot) * 30 * dt; c.y += c.vy * dt; c.rot += c.vr * dt; }
     G.confetti = G.confetti.filter((c) => c.y < H + 30 && c.life < 7);
@@ -704,17 +842,21 @@
       ctx.save();
       ctx.translate(sx, car.y);
       ctx.rotate(car.angle + Math.sin(G.t * 28) * 0.12 * car.wobble);
+      if (v.id === 'truck' && Math.abs(car.stuntShow) > 0.001) {
+        const half = 55 * v.scale;
+        const pivot = car.stuntShow < 0 ? -half : half;
+        ctx.translate(pivot, 0);
+        ctx.rotate(car.stuntShow);
+        ctx.translate(-pivot, 0);
+      }
       const sq = car.squash;
       ctx.scale(1 + sq * 0.08, 1 - sq * 0.1);
       const blink = car.blinkA >= 0 ? Math.sin(Math.min(1, car.blinkA / 0.16) * Math.PI) : 0;
       const lookY = car.onGround ? 0 : (car.vy < 0 ? -0.8 : 0.6);
-      let bounce = car.onGround
-        ? v.bounceBase + Math.sin(car.bp) * v.bounceAmp + (G.input.fast ? Math.sin(car.bp * 2.3) * v.bounceFast : 0)
-        : 3;
-      if (v.id === 'truck') bounce += car.susp * 16;
+      const bounce = bodyBounce(v);
       if (v.id === 'truck') {
         ctx.scale(v.scale, v.scale);
-        Art.drawTruck(ctx, { palette: PLAYER_TRUCK, face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY, t: G.t });
+        Art.drawTruck(ctx, { palette: PLAYER_TRUCK, face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY, t: G.t, flame: G.input.fast && G.state === 'play' });
       } else {
         Art.drawCar(ctx, { face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY });
       }
@@ -727,7 +869,11 @@
       ctx.globalAlpha = Math.max(0, a);
       ctx.fillStyle = p.c;
       if (p.k === 'spark') { Art.starPath(ctx, p.x - G.cam, p.y, p.r * 1.6, p.r * 0.7, p.life * 6); ctx.fill(); }
-      else { ctx.beginPath(); ctx.arc(p.x - G.cam, p.y, p.r, 0, TAU); ctx.fill(); }
+      else if (p.k === 'flame') {
+        const fx = p.x - G.cam, fy = p.y;
+        ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(fx, fy, p.r, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,246,190,0.9)'; ctx.beginPath(); ctx.arc(fx, fy, p.r * 0.45, 0, TAU); ctx.fill();
+      } else { ctx.beginPath(); ctx.arc(p.x - G.cam, p.y, p.r, 0, TAU); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
     ctx.restore(); // camY
