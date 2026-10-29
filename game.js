@@ -258,16 +258,36 @@
   };
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
     wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0, rideLift: 0, ridePeak: 0, dropLock: false,
-    stunt: 0, stuntV: 0, stuntShow: 0, stoppieT: 0, flameT: 0, wasFast: false, wasSlow: false, sparkT: 0 };
+    stunt: 0, stuntV: 0, stuntShow: 0, stoppieT: 0, flameT: 0, wasFast: false, wasSlow: false, sparkT: 0,
+    climbT: 0, hopCd: 0, dipLock: false };
   loadSave();
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 
-  function hillF(x) {
-    return 0.5 + 0.5 * (0.55 * Math.sin(x * 0.0042 + 0.5) + 0.3 * Math.sin(x * 0.0101 + 1.3) + 0.15 * Math.sin(x * 0.021 + 0.7));
+  /* Rise of the playable track above the valley floor, in pixels.
+     Early levels roll gently; Bergen (8) and the finale are bigger, with a sharper crest. */
+  const HILL_AMP = [46, 50, 52, 56, 58, 60, 64, 70, 86, 74];
+  function hillK() { return 0.78 + Math.min(G.level | 0, 9) * 0.055; }
+  function groundOff(x) {
+    const amp = G.hillAmp || 0;
+    if (amp < 0.5) return 0;
+    const k = hillK();
+    const f1 = 0.0104 * k, f2 = 0.0192 * k, f3 = 0.0046 * k;
+    const p = 0.65;
+    let n = 0.52 * Math.sin(x * f1 + p) + 0.30 * Math.sin(x * f2 + 1.7) + 0.18 * Math.sin(x * f3 + 0.25);
+    const i = G.level | 0;
+    if (i >= 6) {
+      const sharp = Math.min(1, (i - 5) / 3.5);
+      n += sharp * 0.48 * Math.pow(Math.max(0, Math.sin(x * f1 + p)), 4);
+    }
+    const t = (n + 1.05) / 2.45;
+    return (t < 0 ? 0 : t > 1 ? 1 : t) * amp;
   }
-  function groundY(x) { return H - GB - G.hillAmp * hillF(x); }
+  function groundY(x) { return H - GB - groundOff(x); }
+  /* Positive = uphill (the ground rises in front). */
+  function gradeAt(x) { return (groundY(x - 34) - groundY(x + 34)) / 68; }
+  function groundAngle(x) { return Math.atan2(groundY(x + 22) - groundY(x - 22), 44); }
   const carSX = () => Math.max(110, W * 0.24);
   function carWX() { return G.cam + carSX(); }
 
@@ -300,11 +320,14 @@
     const half = truckHalf();
     const rearLift = liftAt(wx - half);
     const frontLift = liftAt(wx + half);
-    const rearY = groundY(wx - half) - rearLift;
-    const frontY = groundY(wx + half) - frontLift;
+    const rearBase = groundY(wx - half);
+    const frontBase = groundY(wx + half);
+    const rearY = rearBase - rearLift;
+    const frontY = frontBase - frontLift;
     return {
       y: (rearY + frontY) / 2,
       angle: Math.atan2(frontY - rearY, half * 2),
+      groundAngle: Math.atan2(frontBase - rearBase, half * 2),
       rearLift, frontLift,
       lift: (rearLift + frontLift) / 2,
     };
@@ -339,7 +362,7 @@
     let bounce = car.onGround
       ? v.bounceBase + Math.sin(car.bp) * v.bounceAmp + (G.input.fast ? Math.sin(car.bp * 2.3) * v.bounceFast : 0)
       : 3;
-    if (v.id === 'truck') bounce += car.susp * 16;
+    bounce += car.susp * (v.id === 'truck' ? 14 : 5);
     return bounce;
   }
   function truckNozzle(bounce) {
@@ -397,7 +420,8 @@
     const slowNow = !!G.input.slow && !fastNow;
     const fastEdge = fastNow && !car.wasFast;
     const slowEdge = slowNow && !car.wasSlow;
-    const climbing = !!(ride && car.onGround && (ride.lift > 4 || Math.abs(ride.angle) > 0.08));
+    const obsAng = ride ? Math.abs(ride.angle - ride.groundAngle) : 0;
+    const climbing = !!(ride && car.onGround && (ride.lift > 4 || obsAng > 0.08));
     const allow = car.onGround && !climbing;
     if (fastEdge) {
       Snd.vroom();
@@ -436,9 +460,15 @@
     else if (car.stunt < -0.5) car.stunt = -0.5;
     let grip = 1;
     if (!car.onGround) grip = 0;
-    else if (ride) grip = Math.max(0, 1 - Math.max(ride.lift / 10, Math.abs(ride.angle) / 0.16));
+    else if (ride) grip = Math.max(0, 1 - Math.max(ride.lift / 10, obsAng / 0.16));
     const wob = fastNow && allow ? Math.sin(G.t * 16) * 0.03 : 0;
-    car.stuntShow = car.stunt * grip + wob * grip;
+    let show = car.stunt * grip + wob * grip;
+    if (ride && car.onGround) {
+      const ga = ride.groundAngle;
+      if (show < 0) show = Math.max(show, -Math.max(0, -0.5 - ga));
+      else if (show > 0) show = Math.min(show, Math.max(0, 0.42 - ga));
+    }
+    car.stuntShow = show;
     if (fastNow) {
       car.flameT -= dt;
       if (car.flameT <= 0) {
@@ -458,6 +488,17 @@
     /* Truck hit-box is a little inside the drawing so the lower jump still clears the cab. */
     const def = { cone: [26, 38], rock: [40, 30], truck: [64, 72], puddle: [110, 0] }[type];
     G.objs.push(Object.assign({ type, x, w: def[0], h: def[1], hit: false, passed: false, ox: 0, oy: 0, vx: 0, vy: 0, rot: 0, react: 0, color: Math.floor(Math.random() * 4) }, extra || {}));
+  }
+  function puddleSpot(x) {
+    let best = null, bestScore = -1e9;
+    for (let i = -2; i <= 8; i++) {
+      const xx = x + i * 36;
+      const flat = Math.abs(groundY(xx + 26) - groundY(xx - 26));
+      const dip = groundY(xx) - (groundY(xx - 64) + groundY(xx + 64)) * 0.5;
+      const score = dip * 1.5 - flat;
+      if (flat < 18 && dip > -1 && score > bestScore) { bestScore = score; best = xx; }
+    }
+    return best;
   }
   function spawn() {
     const x = G.nextSpawn, r = G.round;
@@ -482,10 +523,16 @@
         addObs(pick, x + 120);
         for (let i = 0; i < 4; i++) addStar(x + 40 + i * 56, i % 2 ? 108 : 40);
         w = 260; break;
-      case 'puddle':
-        addObs('puddle', x + 110);
-        for (let i = 0; i < 4; i++) addStar(x + 30 + i * 52, 36);
-        w = 230; break;
+      case 'puddle': {
+        const px = puddleSpot(x + 90);
+        if (px == null) { for (let i = 0; i < 5; i++) addStar(x + i * 56, 34); w = 250; }
+        else {
+          addObs('puddle', px);
+          for (let i = 0; i < 4; i++) addStar(px - 70 + i * 50, 36);
+          w = Math.max(230, px - x + 40);
+        }
+        break;
+      }
       case 'truck':
         addObs('truck', x + 140);
         for (let i = 0; i < 5; i++) addStar(x + 140 + (i - 2) * 48, 120 + 36 * Math.sin(Math.PI * i / 4));
@@ -582,7 +629,8 @@
     G.round = i + 1;
     G.pal = PALETTES[i];
     G.baseSpeed = Math.min(MAX_SPEED, BASE_SPEED + i * SPEED_STEP);
-    G.hillTarget = Math.min(70, 36 + i * 4);
+    G.hillTarget = HILL_AMP[i];
+    G.hillAmp = HILL_AMP[i];
     G.patternCount = 0;
     G.nextSpawn = G.cam + W * 0.8;
     G.stars = 0; G.state = 'play';
@@ -590,6 +638,7 @@
     setFace('normal', 0); G.bannerT = 2.2; skyGrad = null;
     car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0; car.rideLift = 0; car.ridePeak = 0; car.dropLock = false;
     car.stunt = 0; car.stuntV = 0; car.stuntShow = 0; car.stoppieT = 0; car.flameT = 0; car.sparkT = 0;
+    car.climbT = 0; car.hopCd = 0; car.dipLock = false;
     car.wasFast = !!G.input.fast; car.wasSlow = !!G.input.slow && !G.input.fast;
     car.y = groundY(carWX());
     $('#title').classList.add('hidden');
@@ -712,7 +761,10 @@
 
   /* ---------------- background trucks (mid layer, parallax 0.4) ---------------- */
   const MIDP = 0.4;
-  function midY(lx) { return H - GB - 48 - 46 * (0.5 + 0.5 * Math.sin(lx * 0.006 + 2) * 0.7 + 0.3 * Math.sin(lx * 0.017)); }
+  function midY(lx) {
+    const roll = 0.68 * Math.sin(lx * 0.0042 + 1.1) + 0.32 * Math.sin(lx * 0.0095 + 0.4);
+    return H - GB - 28 - 70 * (0.5 + 0.5 * roll);
+  }
   function makeBgTruck(fromLeft, offset) {
     const lcam = G.cam * MIDP;
     return fromLeft
@@ -729,6 +781,10 @@
     else if (G.state === 'celebrate') target = 90;
     else target = G.baseSpeed * v.speed * (G.input.fast ? SPEED_GAS : G.input.slow ? SPEED_SLOW : SPEED_AUTO);
     if (car.hitT > 0) { car.hitT -= dt; target *= 0.6; }
+    if (car.onGround && G.state === 'play' && G.hillAmp > 6) {
+      const g = Math.max(-0.42, Math.min(0.42, gradeAt(carWX())));
+      target *= 1 - g * 0.34;
+    }
     G.speed += (target - G.speed) * Math.min(1, dt * 2.5);
     G.cam += G.speed * dt;
     G.hillAmp += (G.hillTarget - G.hillAmp) * Math.min(1, dt * 0.25);
@@ -761,11 +817,38 @@
     } else {
       car.vy += v.grav * dt; car.y += car.vy * dt;
       if (car.y >= gy && car.vy > 0) {
+        car.susp = Math.min(1.25, 0.4 + Math.min(0.8, car.vy / 900));
         car.y = gy; car.onGround = true; car.jumps = 0; car.squash = 1; car.vy = 0;
         Snd.land(); puff(wx - 35, gy, 4); puff(wx + 35, gy, 3);
         if (ride) car.rideLift = ride.lift;
         if (car.jumpBuf > 0) { car.jumpBuf = 0; jump(); }
       }
+    }
+    if (car.onGround && G.state === 'play' && G.hillAmp > 8) {
+      const gnow = gradeAt(wx);
+      if (gnow > 0.05) car.climbT = Math.min(1.2, car.climbT + dt);
+      else car.climbT = Math.max(0, car.climbT - dt * 1.4);
+      if (car.hopCd > 0) car.hopCd -= dt;
+      const drop = groundY(wx + 48) - groundY(wx);
+      const cruise = G.baseSpeed * v.speed * SPEED_AUTO;
+      if (car.hopCd <= 0 && car.climbT > 0.18 && drop > 6 && G.speed > cruise * 1.02) {
+        const h = Math.min(58, 22 + drop * 1.05 + Math.max(0, G.speed - cruise) * 0.055);
+        car.vy = -Math.sqrt(2 * v.grav * h);
+        car.onGround = false;
+        car.hopCd = 0.9;
+        car.climbT = 0;
+        car.squash = -0.55;
+        Snd.boing(v.id === 'truck' ? 0.72 : 1.08);
+        setFace('happy', 0.65);
+        puff(wx, gy, 3, 'rgba(255,255,255,0.75)');
+      }
+      const gAhead = gradeAt(wx + 42);
+      if (!car.dipLock && gnow < -0.05 && gAhead > 0.04) {
+        car.susp = Math.min(1.15, 0.45 + Math.abs(gnow));
+        car.squash = Math.max(car.squash, 0.45);
+        car.dipLock = true;
+      }
+      if (gnow > 0.07) car.dipLock = false;
     }
     if (car.jumpBuf > 0) car.jumpBuf -= dt;
     if (!(ride && car.onGround)) {
@@ -889,10 +972,10 @@
     ctx.save(); ctx.translate(0, G.camY * 0.3);
     const lf = G.cam * 0.12;
     ctx.fillStyle = P.farFar; ctx.beginPath(); ctx.moveTo(0, H);
-    for (let x = 0; x <= W + 20; x += 20) ctx.lineTo(x, H - GB - 120 - 55 * (0.5 + 0.5 * Math.sin((x + lf * 0.6) * 0.004 + 1)));
+    for (let x = 0; x <= W + 20; x += 20) ctx.lineTo(x, H - GB - 150 - 70 * (0.5 + 0.5 * Math.sin((x + lf * 0.55) * 0.0032 + 0.8)));
     ctx.lineTo(W + 20, H); ctx.fill();
     ctx.fillStyle = P.far; ctx.beginPath(); ctx.moveTo(0, H);
-    for (let x = 0; x <= W + 20; x += 16) ctx.lineTo(x, H - GB - 70 - 50 * (0.5 + 0.5 * Math.sin((x + lf) * 0.0065)));
+    for (let x = 0; x <= W + 20; x += 16) ctx.lineTo(x, H - GB - 90 - 62 * (0.5 + 0.5 * Math.sin((x + lf) * 0.0052 + 0.3)));
     ctx.lineTo(W + 20, H); ctx.fill();
     ctx.restore();
 
@@ -922,8 +1005,9 @@
 
     // ground
     ctx.save(); ctx.translate(0, G.camY);
-    const pts = [];
-    for (let x = -10; x <= W + 10; x += 8) pts.push(x, groundY(G.cam + x));
+    const pts = groundPts;
+    pts.length = 0;
+    for (let x = -12; x <= W + 12; x += 12) pts.push(x, groundY(G.cam + x));
     ctx.fillStyle = P.dirt; ctx.beginPath(); ctx.moveTo(-10, H + 400);
     for (let i = 0; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
     ctx.lineTo(W + 10, H + 400); ctx.fill();
@@ -968,7 +1052,8 @@
       const sx = o.x - G.cam; if (sx < -200 || sx > W + 200) continue;
       const gy = groundY(o.x);
       ctx.save(); ctx.translate(sx + o.ox, gy + o.oy);
-      if (o.type === 'cone') { ctx.rotate(o.rot); ctx.translate(0, o.react * Math.sin(G.t * 40) * 0); Art.drawCone(ctx, G.t, o.crush || 0); }
+      ctx.rotate(groundAngle(o.x));
+      if (o.type === 'cone') { ctx.rotate(o.rot); Art.drawCone(ctx, G.t, o.crush || 0); }
       else if (o.type === 'rock') { ctx.rotate(Math.sin(G.t * 30) * 0.08 * o.react); Art.drawRock(ctx, o.crush || 0); }
       else if (o.type === 'truck') {
         // shadow
@@ -1245,7 +1330,9 @@
   }
   buildPicker();
 
-  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, selectVehicle, setColor, confirmPick, openMap, toGarage, toTitle, GOAL, VEHICLES, LEVELS, PAINTS, SPEED_SLOW, SPEED_AUTO, SPEED_GAS, groundY, carWX, veh, update, truckRide, paintOf };
+  const groundPts = [];
+
+  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, selectVehicle, setColor, confirmPick, openMap, toGarage, toTitle, GOAL, VEHICLES, LEVELS, PAINTS, HILL_AMP, SPEED_SLOW, SPEED_AUTO, SPEED_GAS, groundY, gradeAt, groundAngle, carWX, veh, update, truckRide, paintOf, enterPlay };
 
   resize();
   car.y = groundY(carWX());
