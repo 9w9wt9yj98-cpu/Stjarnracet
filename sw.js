@@ -1,5 +1,5 @@
 // network-first, cache fallback (so it also works offline once loaded)
-const C = 'stjarnracet-v7';
+const C = 'stjarnracet-v8';
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(
   caches.keys()

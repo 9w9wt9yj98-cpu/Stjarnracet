@@ -701,5 +701,93 @@
     ctx.restore();
   }
 
-  window.Art = { rr, eye, wheel, starPath, drawCar, drawTruck, drawBuggy, drawRally, drawStar, drawCone, drawRock, drawPuddle, drawSun, drawCloud, drawTree, TRUCK_COLORS };
+  /* Dirt bike and rider. Origin is the ground under the bike, facing right. */
+  function drawMx(ctx, o) {
+    o = o || {};
+    const c = o.palette || { body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806', rim: '#1c1c1c' };
+    const OUT = '#1c2414';
+    const face = o.face || 'normal';
+    const rot = o.wheelRot || 0;
+    const air = !!o.air;
+    const trick = !!o.trick || air;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    wheel(ctx, -30, -17, 17, rot, '#f2f2f2', c.dark, true);
+    wheel(ctx, 42, -14, 13, rot, '#f2f2f2', c.dark, true);
+    ctx.save(); ctx.translate(0, -(o.bounce || 0));
+    ctx.strokeStyle = '#6a737c'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-30, -17 + (o.bounce || 0)); ctx.lineTo(-6, -34); ctx.lineTo(28, -30); ctx.lineTo(42, -14 + (o.bounce || 0)); ctx.stroke();
+    ctx.strokeStyle = c.dark; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(18, -32); ctx.lineTo(36, -46); ctx.stroke();
+    rr(ctx, -16, -46, 34, 16, 6);
+    const g = ctx.createLinearGradient(0, -46, 0, -30);
+    g.addColorStop(0, c.light); g.addColorStop(0.5, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    rr(ctx, 16, -44, 18, 14, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = c.dark; ctx.font = '900 11px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('7', 25, -36);
+    // rider
+    const leg = trick ? -18 : -6;
+    ctx.strokeStyle = '#243044'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-2, -44); ctx.lineTo(leg, trick ? -22 : -16); ctx.moveTo(6, -44); ctx.lineTo(16, -18); ctx.stroke();
+    ctx.fillStyle = c.body; ctx.strokeStyle = OUT; ctx.lineWidth = 2.4;
+    rr(ctx, -10, -68, 26, 26, 8); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = c.dark; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(2, -52); ctx.lineTo(22, -40); ctx.moveTo(8, -56); ctx.lineTo(24, -42); ctx.stroke();
+    ctx.fillStyle = c.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(6, -78, 13, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#bfe9ff';
+    rr(ctx, -4, -84, 22, 8, 3); ctx.fill(); ctx.stroke();
+    const ey = { blink: o.blink || 0, mood: face, lx: 0.4, ly: 0, lidColor: c.dark, dark: OUT, iris: '#3a2a1a', lidBase: 0.05 };
+    eye(ctx, 2, -80, 3.4, 3.6, ey);
+    eye(ctx, 12, -80, 3.2, 3.4, ey);
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (face === 'oops') { ctx.arc(8, -70, 4, 1.15 * Math.PI, 1.85 * Math.PI); }
+    else ctx.arc(8, -74, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  /* Snowmobile. Origin is the ground under the track, facing right. */
+  function drawSnow(ctx, o) {
+    o = o || {};
+    const c = o.palette || { body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806', rim: '#1c1c1c' };
+    const OUT = '#1c2830';
+    const face = o.face || 'normal';
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.fillStyle = '#2c3238'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.ellipse(-6, -9, 30, 11, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#9aa3ab'; ctx.lineWidth = 2;
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath(); ctx.moveTo(-6 + i * 7, -16); ctx.lineTo(-6 + i * 7, -2); ctx.stroke();
+    }
+    ctx.strokeStyle = '#e7eef6'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(18, -6); ctx.quadraticCurveTo(40, -14, 66, -4); ctx.stroke();
+    ctx.fillStyle = '#d5dee8'; ctx.beginPath(); ctx.ellipse(66, -4, 5, 2.4, 0.2, 0, TAU); ctx.fill();
+    ctx.save(); ctx.translate(0, -(o.bounce || 0));
+    rr(ctx, -22, -40, 58, 24, 10);
+    const g = ctx.createLinearGradient(0, -40, 0, -16);
+    g.addColorStop(0, c.light); g.addColorStop(0.45, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.6; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(18, -40); ctx.lineTo(36, -58); ctx.lineTo(46, -40); ctx.closePath();
+    ctx.fillStyle = '#e7f7ff'; ctx.fill(); ctx.stroke();
+    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: c.body, dark: OUT, iris: '#204060', lidBase: face === 'normal' ? 0.08 : 0 };
+    eye(ctx, 6, -30, 5.5, 6.5, ey);
+    eye(ctx, 20, -30, 5, 6, ey);
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (face === 'oops') ctx.arc(14, -20, 4, 1.1 * Math.PI, 1.9 * Math.PI);
+    else ctx.arc(14, -24, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = c.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(-4, -58, 10, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff6b0';
+    rr(ctx, -12, -62, 16, 5, 2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  window.Art = { rr, eye, wheel, starPath, drawCar, drawTruck, drawBuggy, drawRally, drawMx, drawSnow, drawStar, drawCone, drawRock, drawPuddle, drawSun, drawCloud, drawTree, TRUCK_COLORS };
 })();

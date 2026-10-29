@@ -22,12 +22,12 @@
   const PAINTS = [
     { name: 'Röd', body: '#e3141f', light: '#ff6a5c', dark: '#b10c16', rim: '#cfd6dd', mid: '#f0222c' },
     { name: 'Blå', body: '#1a73e8', light: '#9ec4ff', dark: '#0b3c8a', rim: '#ff8a00' },
-    { name: 'Grön', body: '#1faa4a', light: '#8cf0a0', dark: '#0c6a30', rim: '#ffe14a' },
+    { name: 'Grön', body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806', rim: '#1c1c1c', mid: '#8eef28' },
     { name: 'Gul', body: '#ffd21f', light: '#fff4a8', dark: '#e09600', rim: '#3a4250' },
     { name: 'Orange', body: '#ff8a1f', light: '#ffc56a', dark: '#c45600', rim: '#ffffff' },
     { name: 'Rosa', body: '#ee5aaa', light: '#ffb6e0', dark: '#a02474', rim: '#fff6b0' },
   ];
-  const DEFAULT_COLOR = { car: 0, truck: 1, buggy: 2, rally: 4 };
+  const DEFAULT_COLOR = { car: 0, truck: 1, buggy: 2, rally: 4, mx: 2, snow: 2 };
   const VEHICLES = {
     car: {
       id: 'car', name: 'Bil', jump: 520, jump2: 290, grav: 1060, speed: 1, pitch: 1, scale: 1,
@@ -48,6 +48,16 @@
       id: 'rally', name: 'Rally', jump: 530, jump2: 300, grav: 1060, speed: 1, pitch: 1.12, scale: 0.92, spark: true,
       bounceBase: 1.2, bounceAmp: 1, bounceFast: 0.5, freq: 10, roll: false,
       box: { x0: -36, x1: 48, y0: -46, y1: -6 }, star: { x: 8, y: -32, r: 52 }, shadow: 70,
+    },
+    mx: {
+      id: 'mx', name: 'Cross', jump: 540, jump2: 470, grav: 880, speed: 1, pitch: 1.08, scale: 0.92,
+      bounceBase: 2.2, bounceAmp: 1.5, bounceFast: 0.8, freq: 12, roll: false, flip: true, dirt: true,
+      box: { x0: -34, x1: 44, y0: -62, y1: -8 }, star: { x: 6, y: -40, r: 52 }, shadow: 60,
+    },
+    snow: {
+      id: 'snow', name: 'Skoter', jump: 500, jump2: 280, grav: 1020, speed: 1, pitch: 0.68, scale: 0.94,
+      bounceBase: 1, bounceAmp: 0.5, bounceFast: 0.25, freq: 6, roll: false, snow: true,
+      box: { x0: -42, x1: 50, y0: -50, y1: -6 }, star: { x: 8, y: -32, r: 54 }, shadow: 74,
     },
   };
   function veh() { return VEHICLES[G.vehicle] || VEHICLES.car; }
@@ -84,6 +94,8 @@
     if (id === 'truck') Art.drawTruck(ctx, opt);
     else if (id === 'buggy') Art.drawBuggy(ctx, opt);
     else if (id === 'rally') Art.drawRally(ctx, opt);
+    else if (id === 'mx') Art.drawMx(ctx, opt);
+    else if (id === 'snow') Art.drawSnow(ctx, opt);
     else Art.drawCar(ctx, opt);
   }
 
@@ -214,6 +226,17 @@
       this.tone(168, { to: 96, dur: 0.07, type: 'square', vol: 0.045, at: 0.09 });
       this.tone(176, { to: 104, dur: 0.06, type: 'square', vol: 0.035, at: 0.17 });
     },
+    brrap() {
+      this.tone(78, { to: 142, dur: 0.14, type: 'square', vol: 0.05 });
+      this.tone(56, { to: 110, dur: 0.16, type: 'sawtooth', vol: 0.035 });
+      this.noise({ type: 'lowpass', f: 520, to: 160, dur: 0.12, vol: 0.06, q: 0.5 });
+    },
+    volt() {
+      this.noise({ type: 'bandpass', f: 700, to: 2400, dur: 0.2, q: 0.5, vol: 0.07 });
+      this.tone(523, { type: 'triangle', dur: 0.12, vol: 0.15 });
+      this.tone(784, { type: 'triangle', dur: 0.16, vol: 0.13, at: 0.08 });
+      this.tone(1047, { type: 'sine', dur: 0.24, vol: 0.09, at: 0.14 });
+    },
     screech() {
       this.noise({ type: 'bandpass', f: 1700, to: 620, dur: 0.22, q: 3.2, vol: 0.07 });
       this.tone(280, { to: 170, dur: 0.14, type: 'triangle', vol: 0.04 });
@@ -270,7 +293,7 @@
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
     wobble: 0, squash: 0, wheelRot: 0, bp: 0, hitT: 0, jumpBuf: 0, dustT: 0, susp: 0, rideLift: 0, ridePeak: 0, dropLock: false,
     stunt: 0, stuntV: 0, stuntShow: 0, stoppieT: 0, flameT: 0, wasFast: false, wasSlow: false, sparkT: 0,
-    climbT: 0, hopCd: 0, dipLock: false };
+    climbT: 0, hopCd: 0, dipLock: false, flip: 0, flipping: false, voltT: 0, mxLean: 0, wasMx: false, dirtT: 0, snowT: 0 };
   loadSave();
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -278,21 +301,20 @@
 
   /* Rise of the playable track above the valley floor, in pixels.
      Early levels roll gently; Bergen (8) and the finale are bigger, with a sharper crest. */
-  const HILL_AMP = [46, 50, 52, 56, 58, 60, 64, 70, 86, 74];
-  function hillK() { return 0.78 + Math.min(G.level | 0, 9) * 0.055; }
+  /* Level 1 is a real roll (~60px). Bergen is the biggest. */
+  const HILL_AMP = [78, 84, 90, 96, 102, 108, 114, 122, 132, 120];
+  function hillK() { return 1.0 + Math.min(G.level | 0, 6) * 0.03; }
   function groundOff(x) {
     const amp = G.hillAmp || 0;
     if (amp < 0.5) return 0;
     const k = hillK();
-    const f1 = 0.0104 * k, f2 = 0.0192 * k, f3 = 0.0046 * k;
+    const f1 = 0.0116 * k, f2 = 0.0204 * k, f3 = 0.0054 * k;
     const p = 0.65;
-    let n = 0.52 * Math.sin(x * f1 + p) + 0.30 * Math.sin(x * f2 + 1.7) + 0.18 * Math.sin(x * f3 + 0.25);
+    let n = 0.5 * Math.sin(x * f1 + p) + 0.32 * Math.sin(x * f2 + 1.7) + 0.18 * Math.sin(x * f3 + 0.25);
     const i = G.level | 0;
-    if (i >= 6) {
-      const sharp = Math.min(1, (i - 5) / 3.5);
-      n += sharp * 0.48 * Math.pow(Math.max(0, Math.sin(x * f1 + p)), 4);
-    }
-    const t = (n + 1.05) / 2.45;
+    const sharp = i >= 5 ? Math.min(1, 0.4 + (i - 5) / 4) : 0.32;
+    n += sharp * 0.38 * Math.pow(Math.max(0, Math.sin(x * f1 + p)), 4);
+    const t = (n + 1.05) / 2.55;
     return (t < 0 ? 0 : t > 1 ? 1 : t) * amp;
   }
   function groundY(x) { return H - GB - groundOff(x); }
@@ -587,6 +609,14 @@
     } else if (car.jumps < 2) {
       car.vy = -v.jump2; car.jumps = 2; Snd.boing(v.id === 'truck' ? 0.95 : 1.25);
       sparkle(carWX(), car.y - 10, 8);
+      if (v.flip) {
+        car.flipping = true;
+        car.flip = 0;
+        car.voltT = 1.25;
+        Snd.volt();
+        sparkle(carWX(), car.y - 30, 10);
+        setFace('happy', 1);
+      }
     } else car.jumpBuf = 0.15; // remember the tap, jump on landing
   }
   function setFace(f, t) { if (car.face === 'oops' && f === 'happy' && car.faceT > 0.4) return; car.face = f; car.faceT = t; }
@@ -650,6 +680,7 @@
     car.onGround = true; car.vy = 0; car.jumps = 0; car.wobble = 0; car.susp = 0; car.rideLift = 0; car.ridePeak = 0; car.dropLock = false;
     car.stunt = 0; car.stuntV = 0; car.stuntShow = 0; car.stoppieT = 0; car.flameT = 0; car.sparkT = 0;
     car.climbT = 0; car.hopCd = 0; car.dipLock = false;
+    car.flip = 0; car.flipping = false; car.voltT = 0; car.mxLean = 0; car.wasMx = false; car.dirtT = 0; car.snowT = 0;
     car.wasFast = !!G.input.fast; car.wasSlow = !!G.input.slow && !G.input.fast;
     car.y = groundY(carWX());
     $('#title').classList.add('hidden');
@@ -838,6 +869,7 @@
       if (car.y >= gy && car.vy > 0) {
         car.susp = Math.min(1.25, 0.4 + Math.min(0.8, car.vy / 900));
         car.y = gy; car.onGround = true; car.jumps = 0; car.squash = 1; car.vy = 0;
+        car.flipping = false; car.flip = 0;
         Snd.land(); puff(wx - 35, gy, 4); puff(wx + 35, gy, 3);
         if (ride) car.rideLift = ride.lift;
         if (car.jumpBuf > 0) { car.jumpBuf = 0; jump(); }
@@ -851,7 +883,8 @@
       const drop = groundY(wx + 48) - groundY(wx);
       const cruise = G.baseSpeed * v.speed * SPEED_AUTO;
       if (car.hopCd <= 0 && car.climbT > 0.18 && drop > 6 && G.speed > cruise * 1.02) {
-        const h = Math.min(58, 22 + drop * 1.05 + Math.max(0, G.speed - cruise) * 0.055);
+        const hopMul = v.flip ? 1.35 : 1;
+        const h = Math.min(64, (22 + drop * 1.05 + Math.max(0, G.speed - cruise) * 0.055) * hopMul);
         car.vy = -Math.sqrt(2 * v.grav * h);
         car.onGround = false;
         car.hopCd = 0.9;
@@ -868,6 +901,35 @@
         car.dipLock = true;
       }
       if (gnow > 0.07) car.dipLock = false;
+    }
+    if (car.flipping) {
+      car.flip = Math.min(1, car.flip + dt / 0.62);
+      const close = car.vy > 0 && gy - car.y < 40;
+      if (car.flip >= 1 || close) { car.flip = 1; car.flipping = false; }
+    }
+    if (car.voltT > 0) car.voltT -= dt;
+    if (v.dirt && G.state === 'play') {
+      const fastNow = !!G.input.fast;
+      if (fastNow && !car.wasMx) Snd.brrap();
+      car.wasMx = fastNow;
+      const want = fastNow && car.onGround && Math.abs(gradeAt(wx)) < 0.32 ? -0.36 : 0;
+      car.mxLean += (want - car.mxLean) * Math.min(1, dt * 7);
+      if (car.onGround && G.parts.length < 70) {
+        car.dirtT -= dt;
+        if (car.dirtT <= 0) {
+          car.dirtT = fastNow ? 0.045 : 0.1;
+          puff(wx - 28, car.y - 2, fastNow ? 2 : 1, 'rgba(150,110,60,0.75)', 1.1);
+        }
+      }
+    } else car.mxLean += (0 - car.mxLean) * Math.min(1, dt * 8);
+    if (v.snow && G.state === 'play' && car.onGround && G.parts.length < 80) {
+      car.snowT -= dt;
+      const snowy = (G.level | 0) === 4;
+      if (car.snowT <= 0) {
+        car.snowT = snowy ? 0.04 : 0.07;
+        const n = snowy ? 3 : 1;
+        for (let i = 0; i < n; i++) G.parts.push({ k: 'dust', x: wx - 18 + rnd(-6, 4), y: car.y - 2, vx: rnd(-90, -30), vy: rnd(-70, -15), life: 0, max: rnd(0.35, 0.6), r: rnd(snowy ? 4 : 3, snowy ? 8 : 5), c: i % 2 ? 'rgba(255,255,255,0.9)' : 'rgba(210,230,255,0.85)' });
+      }
     }
     if (car.jumpBuf > 0) car.jumpBuf -= dt;
     if (!(ride && car.onGround)) {
@@ -1103,6 +1165,13 @@
       ctx.save();
       ctx.translate(sx, car.y);
       ctx.rotate(car.angle + Math.sin(G.t * 28) * 0.12 * car.wobble);
+      if (v.flip && (car.flipping || (car.flip > 0.001 && car.flip < 0.999))) ctx.rotate(-car.flip * TAU);
+      if (v.dirt && !car.flipping && Math.abs(car.mxLean) > 0.02) {
+        const half = 30 * v.scale;
+        ctx.translate(-half, 0);
+        ctx.rotate(car.mxLean);
+        ctx.translate(half, 0);
+      }
       if (v.id === 'truck' && Math.abs(car.stuntShow) > 0.001) {
         const half = 55 * v.scale;
         const pivot = car.stuntShow < 0 ? -half : half;
@@ -1116,8 +1185,20 @@
       const lookY = car.onGround ? 0 : (car.vy < 0 ? -0.8 : 0.6);
       const bounce = bodyBounce(v);
       ctx.scale(v.scale, v.scale);
-      drawVehicleArt(ctx, v.id, { face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY, t: G.t, flame: v.id === 'truck' && G.input.fast && G.state === 'play' });
+      drawVehicleArt(ctx, v.id, { face: car.face, blink, wheelRot: car.wheelRot, bounce, lookX: 1, lookY, t: G.t, flame: v.id === 'truck' && G.input.fast && G.state === 'play', air: !car.onGround, trick: !!car.flipping });
       ctx.restore();
+      if (car.voltT > 0) {
+        const a = Math.min(1, car.voltT * 1.6, (1.25 - car.voltT) * 3 + 0.2);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.translate(sx, car.y - 86);
+        ctx.font = '900 32px ' + FONT;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#1b3a5c';
+        ctx.strokeText('Volt!', 0, 0);
+        ctx.fillStyle = '#ffe14a'; ctx.fillText('Volt!', 0, 0);
+        ctx.restore();
+      }
     }
 
     // particles (world)
@@ -1305,6 +1386,8 @@
     truck: { sel: '#prevTruck', y: 0.88, bw: 250, bh: 200, sh: 78 },
     buggy: { sel: '#prevBuggy', y: 0.84, bw: 230, bh: 170, sh: 70 },
     rally: { sel: '#prevRally', y: 0.78, bw: 210, bh: 140, sh: 64 },
+    mx: { sel: '#prevMx', y: 0.82, bw: 200, bh: 150, sh: 58 },
+    snow: { sel: '#prevSnow', y: 0.8, bw: 210, bh: 140, sh: 66 },
   };
   function drawPreviews() {
     const pick = $('#pick');

@@ -69,12 +69,13 @@ button { border: 0; padding: 0; margin: 0; font: inherit; cursor: pointer; touch
 
 #pick { justify-content: center; gap: 8px;
   padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
-#pickRow { display: flex; gap: 8px; width: min(98vw, 820px); height: min(42vh, 168px); }
-.vehCard { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  background: rgba(255,255,255,.95); border-radius: 20px; border: 4px solid #fff; padding: 2px 4px 6px;
-  box-shadow: 0 6px 0 rgba(27,58,92,.28), 0 10px 16px rgba(0,0,0,.16);
+#pickRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 6px; width: min(98vw, 800px); height: 168px; min-height: 0; }
+.vehCard { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  background: rgba(255,255,255,.95); border-radius: 16px; border: 3px solid #fff; padding: 2px 4px 4px;
+  box-shadow: 0 4px 0 rgba(27,58,92,.28);
   animation: floaty 2.4s ease-in-out infinite; }
-#pickTruck { animation-delay: -.6s; } #pickBuggy { animation-delay: -1.2s; } #pickRally { animation-delay: -1.8s; }
+#pickTruck { animation-delay: -.4s; } #pickBuggy { animation-delay: -.8s; } #pickRally { animation-delay: -1.2s; }
+#pickMx { animation-delay: -1.6s; } #pickSnow { animation-delay: -2s; }
 .vehCard canvas { width: 100%; flex: 1; min-height: 0; pointer-events: none; }
 .vehCard span { font-weight: 900; font-size: min(4.4vmin, 20px); line-height: 1; color: #1b3a5c; pointer-events: none; }
 .vehCard.pressed { transform: scale(.96); animation: none; }
@@ -112,7 +113,7 @@ button { border: 0; padding: 0; margin: 0; font: inherit; cursor: pointer; touch
   background: rgba(255,255,255,.95); color: #1b3a5c; font-weight: 900; font-size: 18px; border-radius: 999px;
   padding: 8px 16px; min-height: 44px; box-shadow: 0 4px 0 rgba(27,58,92,.28); }
 #mapHome.pressed { transform: scale(.94); }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes vehBounce {
   0% { transform: scale(1) rotate(0); }
   28% { transform: scale(1.12) rotate(-3deg); }
