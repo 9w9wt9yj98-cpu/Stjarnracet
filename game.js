@@ -155,8 +155,19 @@
       } catch (e) { console.warn('audio', e); }
     },
     setMuted(m) {
-      this.muted = m; localStorage.setItem('sr_muted', m ? '1' : '0');
-      if (this.out) this.out.gain.setTargetAtTime(m ? 0 : 0.9, this.ac.currentTime, 0.05);
+      this.muted = !!m;
+      try { localStorage.setItem('sr_muted', this.muted ? '1' : '0'); } catch (e) { /* private mode */ }
+      const ac = this.ac;
+      if (!ac) return;
+      /* iOS Safari (including the home-screen app) suspends the context.
+         resume() only sticks inside the tap, and setTargetAtTime never
+         climbs off an exact 0, so the gain would stay silent after unmute. */
+      if (ac.state !== 'running') { const p = ac.resume(); if (p && p.catch) p.catch(() => {}); }
+      if (this.out) {
+        const t = ac.currentTime || 0;
+        try { this.out.gain.cancelScheduledValues(t); } catch (e) { /* already clear */ }
+        this.out.gain.value = this.muted ? 0 : 0.9;
+      }
     },
     tone(f, opt) {
       const ac = this.ac; if (!ac || this.muted) return;
@@ -665,7 +676,14 @@
     $('#map').classList.add('hidden');
     document.querySelectorAll('.vehCard').forEach((el) => el.classList.remove('chosen'));
     markCards();
+    const goLabel = $('#pickGo span');
+    if (goLabel) goLabel.textContent = from === 'menu' ? 'Klar' : 'Kör!';
     $('#pick').classList.remove('hidden');
+  }
+  function openGarage() {
+    if (G.state !== 'title') return;
+    Snd.unlock();
+    openPick('menu');
   }
   function startGame() {
     if (G.state !== 'title') return;
@@ -701,6 +719,7 @@
       if (el) el.classList.remove('chosen');
       if (G.state !== 'pick') return;
       if (from === 'celebrate') openMap(false);
+      else if (from === 'menu') toTitle();
       else enterPlay(Math.min(G.done, LEVELS.length - 1));
     }, 680);
   }
@@ -1207,9 +1226,43 @@
   press($('#pickGo'), null, confirmPick);
   document.querySelectorAll('.vehCard').forEach((el) => press(el, null, () => selectVehicle(el.dataset.veh)));
   const muteBtn = $('#muteBtn');
-  muteBtn.classList.toggle('muted', Snd.muted);
-  press(muteBtn, null, () => { Snd.setMuted(!Snd.muted); muteBtn.classList.toggle('muted', Snd.muted); });
-  cvs.addEventListener('pointerdown', (e) => { e.preventDefault(); Snd.unlock(); if (G.state === 'play') jump(); });
+  function syncMute() {
+    muteBtn.classList.toggle('muted', Snd.muted);
+    muteBtn.setAttribute('aria-label', Snd.muted ? 'Ljud av' : 'Ljud på');
+    muteBtn.setAttribute('aria-pressed', Snd.muted ? 'true' : 'false');
+  }
+  syncMute();
+  /* One gesture, one toggle. setPointerCapture also emits lostpointercapture,
+     and the old press() helper ran the toggle on both events. */
+  let mutePtr = null;
+  muteBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    muteBtn.classList.add('pressed');
+    mutePtr = e.pointerId;
+    try { muteBtn.setPointerCapture(e.pointerId); } catch (err) { /* older iOS */ }
+  });
+  function endMute(e) {
+    if (mutePtr == null) return;
+    if (e.pointerId != null && e.pointerId !== mutePtr) return;
+    mutePtr = null;
+    muteBtn.classList.remove('pressed');
+    e.preventDefault();
+    e.stopPropagation();
+    Snd.unlock();
+    Snd.setMuted(!Snd.muted);
+    syncMute();
+  }
+  muteBtn.addEventListener('pointerup', endMute);
+  muteBtn.addEventListener('lostpointercapture', endMute);
+  muteBtn.addEventListener('pointercancel', (e) => { mutePtr = null; muteBtn.classList.remove('pressed'); e.stopPropagation(); });
+  press($('#pickBtn'), null, openGarage);
+  cvs.addEventListener('pointerdown', (e) => {
+    if (e.target !== cvs) return;
+    e.preventDefault();
+    Snd.unlock();
+    if (G.state === 'play') jump();
+  });
   $('#rotateHint').addEventListener('pointerdown', () => { hintDismissed = true; $('#rotateHint').classList.add('hidden'); });
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
@@ -1332,7 +1385,8 @@
 
   const groundPts = [];
 
-  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, selectVehicle, setColor, confirmPick, openMap, toGarage, toTitle, GOAL, VEHICLES, LEVELS, PAINTS, HILL_AMP, SPEED_SLOW, SPEED_AUTO, SPEED_GAS, groundY, gradeAt, groundAngle, carWX, veh, update, truckRide, paintOf, enterPlay };
+  window.__game = { G, car, celebrate, jump, nextRound, startGame, chooseVehicle, selectVehicle, setColor, confirmPick, openMap, toGarage, toTitle, GOAL, VEHICLES, LEVELS, PAINTS, HILL_AMP, SPEED_SLOW, SPEED_AUTO, SPEED_GAS, groundY, gradeAt, groundAngle, carWX, veh, update, truckRide, paintOf, enterPlay,
+    sound: () => ({ muted: Snd.muted, state: Snd.ac ? Snd.ac.state : 'none', gain: Snd.out ? Snd.out.gain.value : null }) };
 
   resize();
   car.y = groundY(carWX());
