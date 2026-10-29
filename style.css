@@ -58,20 +58,56 @@ button { border: 0; padding: 0; margin: 0; font: inherit; cursor: pointer; touch
 #nextBtn { animation: pop .5s cubic-bezier(.2,1.6,.4,1) both, pulse 1.4s .5s ease-in-out infinite; }
 @keyframes pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-#pick { justify-content: center; padding-top: 36px; }
-#pickRow { display: flex; gap: min(3.5vw, 24px); width: min(90vw, 740px); height: min(64vh, 268px); }
+#mapBtn { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom));
+  background: rgba(255,255,255,.95); color: #1b3a5c; font-weight: 900; font-size: min(5vmin, 22px);
+  border-radius: 999px; padding: 10px 18px; min-height: 48px; box-shadow: 0 4px 0 rgba(27,58,92,.3); }
+#mapBtn.pressed { transform: scale(.94); }
+
+#pick { justify-content: center; gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+#pickRow { display: flex; gap: 8px; width: min(98vw, 820px); height: min(42vh, 168px); }
 .vehCard { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  background: rgba(255,255,255,.95); border-radius: 32px; border: 6px solid #fff; padding: 6px 8px 8px;
-  box-shadow: 0 8px 0 rgba(27,58,92,.28), 0 14px 24px rgba(0,0,0,.18);
+  background: rgba(255,255,255,.95); border-radius: 20px; border: 4px solid #fff; padding: 2px 4px 6px;
+  box-shadow: 0 6px 0 rgba(27,58,92,.28), 0 10px 16px rgba(0,0,0,.16);
   animation: floaty 2.4s ease-in-out infinite; }
-#pickTruck { animation-delay: -1.2s; }
+#pickTruck { animation-delay: -.6s; } #pickBuggy { animation-delay: -1.2s; } #pickRally { animation-delay: -1.8s; }
 .vehCard canvas { width: 100%; flex: 1; min-height: 0; pointer-events: none; }
-.vehCard span { font-weight: 900; font-size: min(7vmin, 32px); line-height: 1; pointer-events: none; }
-#pickCar span { color: #d0121c; }
-#pickTruck span { color: #0b4db8; }
+.vehCard span { font-weight: 900; font-size: min(4.4vmin, 20px); line-height: 1; color: #1b3a5c; pointer-events: none; }
 .vehCard.pressed { transform: scale(.96); animation: none; }
+.vehCard.on { border-color: #ffd21f; box-shadow: 0 6px 0 #e0a000, 0 10px 16px rgba(0,0,0,.16); }
 .vehCard.chosen { z-index: 2; border-color: #ffd21f; animation: vehBounce .68s cubic-bezier(.18,1.45,.32,1) both;
-  box-shadow: 0 10px 0 #e0a000, 0 16px 24px rgba(0,0,0,.2); }
+  box-shadow: 0 8px 0 #e0a000, 0 12px 18px rgba(0,0,0,.2); }
+#swatches { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.swatch { width: min(11vmin, 50px); height: min(11vmin, 50px); border-radius: 50%; border: 4px solid #fff;
+  box-shadow: 0 4px 0 rgba(27,58,92,.28); }
+.swatch.on { outline: 4px solid #1b3a5c; transform: scale(1.08); }
+.swatch.pressed { transform: scale(.92); }
+#pickGo { font-size: min(6.5vmin, 32px); padding: 6px 22px; border-width: 4px; box-shadow: 0 5px 0 #1d6b26, 0 8px 14px rgba(0,0,0,.2); }
+#pickGo svg { width: min(7vmin, 34px); height: min(7vmin, 34px); }
+#pickGo.pressed { transform: translateY(3px) scale(.97); box-shadow: 0 2px 0 #1d6b26; animation: none; }
+
+#map { background: linear-gradient(#8fd4ff, #d9f7c4); gap: 2px;
+  padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+.mapHead { font-size: min(7vmin, 34px); font-weight: 900; color: #fff; -webkit-text-stroke: 6px #1d6b26; paint-order: stroke fill;
+  text-shadow: 0 3px 0 #14521c; line-height: 1; }
+#mapStage { position: relative; width: min(96vw, 820px); height: min(64vh, 250px); }
+#mapRoad { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#mapVeh { position: absolute; width: 72px; height: 52px; transform: translate(-50%, -78%); z-index: 3; pointer-events: none; }
+.node { position: absolute; width: 52px; height: 52px; margin: 0; border-radius: 50%; transform: translate(-50%, -50%);
+  background: #fff; border: 4px solid #1d6b26; color: #1b3a5c; font-weight: 900; font-size: 20px;
+  box-shadow: 0 4px 0 rgba(20,80,30,.35); display: flex; align-items: center; justify-content: center; z-index: 2; }
+.node b { pointer-events: none; line-height: 1; }
+.node em { position: absolute; top: -8px; right: -6px; font-style: normal; font-size: 16px; color: #e08a00;
+  text-shadow: 0 1px 0 #fff; pointer-events: none; }
+.node .lock { width: 28px; height: 28px; pointer-events: none; }
+.node.done { background: #fff6c8; }
+.node.next { border-color: #e3141f; animation: pulse 1s ease-in-out infinite; }
+.node.locked { background: #d5dde6; border-color: #8aa0b4; box-shadow: 0 4px 0 rgba(40,60,80,.25); }
+.node.pressed { transform: translate(-50%, -50%) scale(.94); }
+#mapHome { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom));
+  background: rgba(255,255,255,.95); color: #1b3a5c; font-weight: 900; font-size: 18px; border-radius: 999px;
+  padding: 8px 16px; min-height: 44px; box-shadow: 0 4px 0 rgba(27,58,92,.28); }
+#mapHome.pressed { transform: scale(.94); }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @keyframes vehBounce {
   0% { transform: scale(1) rotate(0); }

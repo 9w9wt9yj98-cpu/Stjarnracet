@@ -129,7 +129,8 @@
 
   function drawCar(ctx, o) {
     o = o || {};
-    const OUT = '#4a0b10', RED = '#e3141f';
+    const pal = o.palette || { body: '#e3141f', light: '#ff6a5c', dark: '#b10c16', rim: '#cfd6dd', mid: '#f0222c' };
+    const OUT = '#4a0b10', RED = pal.body;
     const face = o.face || 'normal';
     const mouth = o.mouth || face;
     const rot = o.wheelRot || 0;
@@ -141,7 +142,7 @@
     ctx.translate(0, -(o.bounce || 0));
 
     // spoiler
-    ctx.fillStyle = '#b30d17'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.5;
+    ctx.fillStyle = pal.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2.5;
     rr(ctx, -66, -58, 5, 12, 2); ctx.fill(); ctx.stroke();
     rr(ctx, -84, -63, 30, 8, 4); ctx.fillStyle = RED; ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#ffd21f'; rr(ctx, -80, -61, 22, 2.5, 1.2); ctx.fill();
@@ -151,7 +152,7 @@
     // body fill
     bodyPath(ctx);
     const g = ctx.createLinearGradient(0, -82, 0, -14);
-    g.addColorStop(0, '#ff6a5c'); g.addColorStop(0.45, '#f0222c'); g.addColorStop(1, '#b10c16');
+    g.addColorStop(0, pal.light); g.addColorStop(0.45, pal.mid || pal.body); g.addColorStop(1, pal.dark);
     ctx.fillStyle = g; ctx.fill();
 
     ctx.save(); bodyPath(ctx); ctx.clip();
@@ -192,7 +193,7 @@
     ctx.beginPath(); ctx.moveTo(-34, -56); ctx.lineTo(-27, -70); ctx.stroke();
 
     // eyes (on the windshield)
-    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: '#e8202a', dark: OUT, iris: '#2b7de9', lidBase: face === 'normal' ? 0.12 : 0 };
+    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: pal.body, dark: OUT, iris: '#2b7de9', lidBase: face === 'normal' ? 0.12 : 0 };
     eye(ctx, -3, -63, 10.5, 13, ey);
     eye(ctx, 14, -62, 9.5, 12.5, ey);
     // eyebrows
@@ -258,8 +259,8 @@
     ctx.restore(); // body group
 
     // wheels
-    wheel(ctx, -36, -15, 15, rot, '#cfd6dd', '#e3141f', false);
-    wheel(ctx, 38, -15, 15, rot, '#cfd6dd', '#e3141f', false);
+    wheel(ctx, -36, -15, 15, rot, pal.rim, pal.body, false);
+    wheel(ctx, 38, -15, 15, rot, pal.rim, pal.body, false);
     ctx.restore();
   }
 
@@ -592,5 +593,113 @@
     ctx.restore();
   }
 
-  window.Art = { rr, eye, wheel, starPath, drawCar, drawTruck, drawStar, drawCone, drawRock, drawPuddle, drawSun, drawCloud, drawTree, TRUCK_COLORS };
+  /* Chunky open-top buggy. Origin is the ground between the wheels. */
+  function drawBuggy(ctx, o) {
+    o = o || {};
+    const c = o.palette || { body: '#1faa4a', light: '#8cf0a0', dark: '#0c6a30', rim: '#ffe14a' };
+    const OUT = '#1d2430';
+    const face = o.face || 'normal';
+    const rot = o.wheelRot || 0;
+    const b = o.bounce || 0;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = '#8d939c'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-34, -22); ctx.lineTo(-34, -50 - b); ctx.moveTo(42, -22); ctx.lineTo(42, -50 - b); ctx.stroke();
+    ctx.save(); ctx.translate(0, -b);
+    ctx.strokeStyle = c.dark; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(-22, -60); ctx.quadraticCurveTo(8, -112, 40, -60); ctx.stroke();
+    ctx.strokeStyle = '#d7dde6'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-18, -64); ctx.quadraticCurveTo(8, -104, 36, -64); ctx.stroke();
+    rr(ctx, -58, -66, 118, 42, 16);
+    const g = ctx.createLinearGradient(0, -66, 0, -24);
+    g.addColorStop(0, c.light); g.addColorStop(0.45, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
+    ctx.save(); rr(ctx, -58, -66, 118, 42, 16); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(-60, -48, 122, 6);
+    ctx.restore();
+    rr(ctx, -4, -96, 52, 34, 12);
+    ctx.fillStyle = '#e7f8ff'; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
+    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: c.body, dark: OUT, iris: '#5a3a16', lidBase: face === 'normal' ? 0.08 : 0 };
+    eye(ctx, 14, -80, 9, 11, ey);
+    eye(ctx, 34, -80, 8, 10, ey);
+    ctx.fillStyle = '#fff6b0'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(56, -50, 8, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(54, -52, 2.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.fillStyle = '#3a1218';
+    if (face === 'oops') {
+      ctx.beginPath(); ctx.ellipse(50, -34, 5, 6.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(34, -40); ctx.quadraticCurveTo(50, face === 'happy' ? -16 : -22, 64, -38); ctx.quadraticCurveTo(50, -30, 34, -40); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      if (face === 'happy') { ctx.fillStyle = '#ff8aa0'; ctx.beginPath(); ctx.ellipse(50, -28, 6, 4, 0.2, 0, TAU); ctx.fill(); }
+    }
+    ctx.fillStyle = 'rgba(255,150,180,0.55)';
+    ctx.beginPath(); ctx.ellipse(28, -58, 5, 2.6, 0, 0, TAU); ctx.fill();
+    wheel(ctx, -62, -40, 12, rot, c.rim, c.dark, false);
+    if (face === 'oops') {
+      ctx.fillStyle = '#8fd8ff'; ctx.strokeStyle = '#2b7de9'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(48, -100); ctx.quadraticCurveTo(58, -86, 52, -82); ctx.quadraticCurveTo(42, -84, 48, -100); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+    wheel(ctx, -34, -22, 20, rot, c.rim, c.dark, false);
+    wheel(ctx, 42, -22, 20, rot, c.rim, c.dark, false);
+    ctx.restore();
+  }
+
+  /* Little rally car. Origin is the ground between the wheels. */
+  function drawRally(ctx, o) {
+    o = o || {};
+    const c = o.palette || { body: '#ff8a1f', light: '#ffc56a', dark: '#c45600', rim: '#ffffff' };
+    const OUT = '#2a2118';
+    const face = o.face || 'normal';
+    const rot = o.wheelRot || 0;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.save(); ctx.translate(0, -(o.bounce || 0));
+    ctx.fillStyle = c.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2.4;
+    rr(ctx, -70, -52, 8, 16, 3); ctx.fill(); ctx.stroke();
+    rr(ctx, -78, -58, 26, 8, 3); ctx.fillStyle = c.body; ctx.fill(); ctx.stroke();
+    rr(ctx, -46, -48, 104, 30, 10);
+    const g = ctx.createLinearGradient(0, -48, 0, -18);
+    g.addColorStop(0, c.light); g.addColorStop(0.4, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
+    ctx.save(); rr(ctx, -46, -48, 104, 30, 10); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fillRect(-50, -36, 110, 5);
+    ctx.fillStyle = c.dark; ctx.fillRect(-50, -30, 110, 3);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(8, -48); ctx.quadraticCurveTo(4, -78, 28, -78); ctx.lineTo(48, -78); ctx.quadraticCurveTo(58, -78, 60, -64); ctx.lineTo(58, -48); ctx.closePath();
+    ctx.fillStyle = '#e7f8ff'; ctx.fill(); ctx.stroke();
+    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: c.body, dark: OUT, iris: '#2040c0', lidBase: face === 'normal' ? 0.1 : 0 };
+    eye(ctx, 28, -64, 8, 9.5, ey);
+    eye(ctx, 46, -63, 7, 8.5, ey);
+    ctx.fillStyle = '#2c313c'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    rr(ctx, 52, -58, 22, 10, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff6b0';
+    for (const lx of [56, 64, 72]) { ctx.beginPath(); ctx.arc(lx, -53, 3.1, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = OUT; ctx.fillStyle = '#3a1218'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    if (face === 'oops') {
+      ctx.beginPath(); ctx.ellipse(62, -28, 4.5, 5.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(50, -32); ctx.quadraticCurveTo(62, face === 'happy' ? -12 : -18, 74, -30); ctx.quadraticCurveTo(62, -24, 50, -32); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      if (face === 'happy') { ctx.fillStyle = '#ff8aa0'; ctx.beginPath(); ctx.ellipse(64, -22, 5, 3.2, 0.3, 0, TAU); ctx.fill(); }
+    }
+    ctx.fillStyle = '#fff';
+    starPath(ctx, -8, -34, 9, 4.2, 0); ctx.fill();
+    ctx.fillStyle = c.dark;
+    ctx.font = '900 9px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('4', -8, -33);
+    ctx.fillStyle = 'rgba(255,150,180,0.5)';
+    ctx.beginPath(); ctx.ellipse(40, -46, 4, 2.2, 0, 0, TAU); ctx.fill();
+    if (face === 'oops') {
+      ctx.fillStyle = '#8fd8ff'; ctx.strokeStyle = '#2b7de9'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(58, -82); ctx.quadraticCurveTo(68, -70, 62, -66); ctx.quadraticCurveTo(52, -68, 58, -82); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+    wheel(ctx, -30, -14, 14, rot, c.rim, c.dark, false);
+    wheel(ctx, 40, -14, 14, rot, c.rim, c.dark, false);
+    ctx.restore();
+  }
+
+  window.Art = { rr, eye, wheel, starPath, drawCar, drawTruck, drawBuggy, drawRally, drawStar, drawCone, drawRock, drawPuddle, drawSun, drawCloud, drawTree, TRUCK_COLORS };
 })();

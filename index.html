@@ -48,20 +48,44 @@
       <svg viewBox="0 0 48 48"><path d="M16 10l24 14-24 14z" fill="#fff" stroke="#1d6b26" stroke-width="3" stroke-linejoin="round"/></svg>
       <span>Kör!</span>
     </button>
+    <button id="mapBtn" aria-label="Banor">Banor</button>
   </div>
 
   <!-- vehicle picker -->
   <div id="pick" class="overlay hidden">
     <div id="pickRow">
-      <button id="pickCar" class="vehCard" aria-label="Röd bil">
+      <button id="pickCar" class="vehCard" data-veh="car" aria-label="Bil">
         <canvas id="prevCar" width="400" height="280"></canvas>
         <span>Bil</span>
       </button>
-      <button id="pickTruck" class="vehCard" aria-label="Blå monstertruck">
+      <button id="pickTruck" class="vehCard" data-veh="truck" aria-label="Truck">
         <canvas id="prevTruck" width="400" height="280"></canvas>
         <span>Truck</span>
       </button>
+      <button id="pickBuggy" class="vehCard" data-veh="buggy" aria-label="Buggy">
+        <canvas id="prevBuggy" width="400" height="280"></canvas>
+        <span>Buggy</span>
+      </button>
+      <button id="pickRally" class="vehCard" data-veh="rally" aria-label="Rally">
+        <canvas id="prevRally" width="400" height="280"></canvas>
+        <span>Rally</span>
+      </button>
     </div>
+    <div id="swatches"></div>
+    <button id="pickGo" class="bigBtn go" aria-label="Kör">
+      <svg viewBox="0 0 48 48"><path d="M16 10l24 14-24 14z" fill="#fff" stroke="#1d6b26" stroke-width="3" stroke-linejoin="round"/></svg>
+      <span>Kör!</span>
+    </button>
+  </div>
+
+  <!-- level map -->
+  <div id="map" class="overlay hidden">
+    <div class="mapHead">Banor</div>
+    <div id="mapStage">
+      <svg id="mapRoad" viewBox="0 0 800 280" preserveAspectRatio="none"></svg>
+      <canvas id="mapVeh" width="160" height="120"></canvas>
+    </div>
+    <button id="mapHome" aria-label="Hem">Hem</button>
   </div>
 
   <!-- celebration -->
