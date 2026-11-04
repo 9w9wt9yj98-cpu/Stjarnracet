@@ -877,23 +877,31 @@
     // friendly headlight, not a face
     ctx.fillStyle = '#fff6b0'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.ellipse(52, -40, 5, 3.4, -0.3, 0, TAU); ctx.fill(); ctx.stroke();
-    // raised seat behind the hood
-    ctx.fillStyle = '#2a3036'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    // long low padded seat along the top of the track
+    ctx.fillStyle = '#343b44'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(-18, -30); ctx.lineTo(-6, -48); ctx.lineTo(12, -44); ctx.lineTo(10, -28); ctx.closePath();
+    ctx.moveTo(16, -30);
+    ctx.quadraticCurveTo(14, -46, 4, -46);
+    ctx.lineTo(-38, -44);
+    ctx.quadraticCurveTo(-54, -46, -56, -56);
+    ctx.lineTo(-48, -32);
+    ctx.lineTo(14, -28);
+    ctx.closePath();
     ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(2, -44); ctx.lineTo(-36, -42); ctx.quadraticCurveTo(-48, -44, -50, -52); ctx.stroke();
     // handlebars
     ctx.strokeStyle = '#222'; ctx.lineWidth = 3.4;
     ctx.beginPath(); ctx.moveTo(24, -58); ctx.lineTo(22, -76); ctx.moveTo(10, -76); ctx.lineTo(34, -74); ctx.stroke();
-    // rider
+    // rider sitting on the front of the seat
+    ctx.fillStyle = '#3a4550';
+    ctx.beginPath(); ctx.moveTo(0, -46); ctx.lineTo(12, -38); ctx.lineTo(18, -34); ctx.lineTo(4, -46); ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = c.dark;
-    ctx.beginPath(); ctx.arc(0, -62, 9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -60, 9, 0, TAU); ctx.fill();
     ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#9ad8ff';
-    rr(ctx, -6, -66, 14, 5, 2); ctx.fill();
-    ctx.fillStyle = '#3a4550';
-    ctx.beginPath(); ctx.moveTo(-8, -52); ctx.lineTo(2, -40); ctx.lineTo(8, -36); ctx.lineTo(-2, -50); ctx.closePath();
-    ctx.fill();
+    rr(ctx, 0, -64, 14, 5, 2); ctx.fill();
     ctx.restore();
     ctx.restore();
   }
