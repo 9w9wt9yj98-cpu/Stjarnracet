@@ -15,6 +15,16 @@ button { border: 0; padding: 0; margin: 0; font: inherit; cursor: pointer; touch
 .roundBtn svg { width: 62%; height: 62%; pointer-events: none; }
 .roundBtn.pressed { transform: scale(.9); }
 
+#menuBtn { position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left));
+  min-width: 84px; height: 64px; padding: 0 16px; border-radius: 18px; background: #fff; color: #1b3a5c;
+  font-weight: 900; font-size: 22px; box-shadow: 0 4px 0 rgba(27,58,92,.35); }
+#menuBtn.pressed { transform: scale(.94); }
+#pause { pointer-events: auto; background: rgba(16, 36, 56, .45); }
+.pauseCard { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.pauseCard button { min-width: min(70vw, 320px); min-height: 64px; padding: 8px 22px; border-radius: 999px;
+  background: #fff; color: #1b3a5c; font-weight: 900; font-size: min(6vmin, 28px); box-shadow: 0 5px 0 rgba(27,58,92,.28); }
+#pauseGo { background: linear-gradient(#5be36a, #23a834); color: #fff; text-shadow: 0 2px 0 #1d6b26; box-shadow: 0 5px 0 #1d6b26; }
+.pauseCard button.pressed { transform: translateY(3px) scale(.98); }
 #muteBtn { position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
   width: 64px; height: 64px; background: rgba(255,255,255,.92); box-shadow: 0 4px 0 rgba(27,58,92,.35); }
 #muteBtn .off { display: none; } #muteBtn.muted .on { display: none; } #muteBtn.muted .off { display: block; }

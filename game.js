@@ -688,6 +688,7 @@
     $('#pick').classList.add('hidden');
     $('#map').classList.add('hidden');
     $('#controls').classList.remove('hidden');
+    $('#pause').classList.add('hidden');
     Snd.go();
   }
   function nextRound() {
@@ -708,7 +709,7 @@
     document.querySelectorAll('.vehCard').forEach((el) => el.classList.remove('chosen'));
     markCards();
     const goLabel = $('#pickGo span');
-    if (goLabel) goLabel.textContent = from === 'menu' ? 'Klar' : 'Kör!';
+    if (goLabel) goLabel.textContent = (from === 'menu' || from === 'pause') ? 'Klar' : 'Kör!';
     $('#pick').classList.remove('hidden');
   }
   function openGarage() {
@@ -751,6 +752,7 @@
       if (G.state !== 'pick') return;
       if (from === 'celebrate') openMap(false);
       else if (from === 'menu') toTitle();
+      else if (from === 'pause') resumeKept();
       else enterPlay(Math.min(G.done, LEVELS.length - 1));
     }, 680);
   }
@@ -799,6 +801,48 @@
     Snd.pop();
     enterPlay(i);
   }
+  function resumeKept() {
+    car.onGround = true;
+    car.vy = 0;
+    car.jumps = 0;
+    car.flipping = false;
+    car.flip = 0;
+    car.stunt = 0; car.stuntV = 0; car.stuntShow = 0; car.mxLean = 0;
+    car.angle = groundAngle(carWX());
+    car.y = groundY(carWX());
+    G.state = 'play';
+    G.input.fast = G.input.slow = false;
+    $('#pause').classList.add('hidden');
+    $('#pick').classList.add('hidden');
+    $('#title').classList.add('hidden');
+    $('#map').classList.add('hidden');
+    $('#celebrate').classList.add('hidden');
+    $('#controls').classList.remove('hidden');
+  }
+  function openPause() {
+    if (G.state !== 'play') return;
+    G.state = 'pause';
+    G.input.fast = G.input.slow = false;
+    $('#controls').classList.add('hidden');
+    $('#pause').classList.remove('hidden');
+    Snd.pop();
+  }
+  function resumePause() {
+    if (G.state !== 'pause') return;
+    G.state = 'play';
+    $('#pause').classList.add('hidden');
+    $('#controls').classList.remove('hidden');
+  }
+  function pauseToMap() {
+    if (G.state !== 'pause') return;
+    $('#pause').classList.add('hidden');
+    openMap(false);
+  }
+  function pauseToTitle() {
+    if (G.state !== 'pause') return;
+    $('#pause').classList.add('hidden');
+    toTitle();
+  }
   function toTitle() {
     G.state = 'title';
     G.input.fast = G.input.slow = false;
@@ -825,6 +869,7 @@
   /* ---------------- update ---------------- */
   function update(dt) {
     G.t += dt;
+    if (G.state === 'pause' || (G.state === 'pick' && G.pickFrom === 'pause')) return;
     const v = veh();
     let target;
     if (G.state === 'title' || G.state === 'pick' || G.state === 'map') target = 140;
@@ -1235,6 +1280,8 @@
     }
 
     // HUD
+    const menuBtn = $('#menuBtn');
+    if (menuBtn) menuBtn.classList.toggle('hidden', G.state !== 'play');
     if (G.state === 'play' || G.state === 'celebrate') drawHUD();
     drawPreviews();
     if (G.state === 'map') drawMapDriver();
@@ -1338,6 +1385,11 @@
   muteBtn.addEventListener('lostpointercapture', endMute);
   muteBtn.addEventListener('pointercancel', (e) => { mutePtr = null; muteBtn.classList.remove('pressed'); e.stopPropagation(); });
   press($('#pickBtn'), null, openGarage);
+  press($('#menuBtn'), null, openPause);
+  press($('#pauseGo'), null, resumePause);
+  press($('#pauseSwap'), null, () => { if (G.state === 'pause') openPick('pause'); });
+  press($('#pauseMap'), null, pauseToMap);
+  press($('#pauseHome'), null, pauseToTitle);
   cvs.addEventListener('pointerdown', (e) => {
     if (e.target !== cvs) return;
     e.preventDefault();

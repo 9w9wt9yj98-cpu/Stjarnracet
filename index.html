@@ -19,6 +19,7 @@
 <canvas id="game"></canvas>
 
 <div id="ui">
+  <button id="menuBtn" class="hidden" aria-label="Meny">Meny</button>
   <!-- top right: sound -->
   <button id="muteBtn" class="roundBtn small" aria-label="Ljud">
     <svg viewBox="0 0 48 48" class="on"><path d="M8 18h8l11-9v30l-11-9H8z" fill="#fff" stroke="#1b3a5c" stroke-width="3" stroke-linejoin="round"/><path d="M33 16c4 4 4 12 0 16M38 11c7 7 7 19 0 26" fill="none" stroke="#1b3a5c" stroke-width="3.5" stroke-linecap="round"/></svg>
@@ -39,6 +40,15 @@
       <svg viewBox="0 0 64 64"><path d="M32 8L52 32H40v20H24V32H12z" fill="#fff" stroke="#8a3b00" stroke-width="4" stroke-linejoin="round"/></svg>
       <span>Hoppa!</span>
     </button>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="pauseCard">
+      <button id="pauseSwap" aria-label="Byt fordon">Byt fordon</button>
+      <button id="pauseGo" aria-label="Fortsätt">Fortsätt</button>
+      <button id="pauseMap" aria-label="Banor">Banor</button>
+      <button id="pauseHome" aria-label="Startmeny">Startmeny</button>
+    </div>
   </div>
 
   <!-- title screen -->

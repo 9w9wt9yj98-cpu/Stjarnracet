@@ -701,50 +701,120 @@
     ctx.restore();
   }
 
-  /* Dirt bike and rider. Origin is the ground under the bike, facing right. */
+  function knobWheel(ctx, x, y, r, rot) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.save(); ctx.rotate(rot || 0);
+    ctx.fillStyle = '#1a1a1a';
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      ctx.rotate(TAU / n);
+      rr(ctx, -r * 0.16, -r - r * 0.16, r * 0.32, r * 0.28, r * 0.06);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#242424';
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(2, r * 0.08); ctx.stroke();
+    ctx.save(); ctx.rotate(rot || 0);
+    ctx.strokeStyle = '#e6e6e6'; ctx.lineWidth = Math.max(1.2, r * 0.045);
+    for (let i = 0; i < 10; i++) {
+      ctx.rotate(TAU / 10);
+      ctx.beginPath(); ctx.moveTo(0, r * 0.18); ctx.lineTo(0, r * 0.78); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#f4f4f4';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  /* Dirt bike and rider. Origin is the ground between the wheels, facing right. */
   function drawMx(ctx, o) {
     o = o || {};
     const c = o.palette || { body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806', rim: '#1c1c1c' };
-    const OUT = '#1c2414';
+    const OUT = '#1a1f16';
     const face = o.face || 'normal';
     const rot = o.wheelRot || 0;
-    const air = !!o.air;
-    const trick = !!o.trick || air;
+    const trick = !!o.trick;
+    const b = o.bounce || 0;
     ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    wheel(ctx, -30, -17, 17, rot, '#f2f2f2', c.dark, true);
-    wheel(ctx, 42, -14, 13, rot, '#f2f2f2', c.dark, true);
-    ctx.save(); ctx.translate(0, -(o.bounce || 0));
-    ctx.strokeStyle = '#6a737c'; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(-30, -17 + (o.bounce || 0)); ctx.lineTo(-6, -34); ctx.lineTo(28, -30); ctx.lineTo(42, -14 + (o.bounce || 0)); ctx.stroke();
-    ctx.strokeStyle = c.dark; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(18, -32); ctx.lineTo(36, -46); ctx.stroke();
-    rr(ctx, -16, -46, 34, 16, 6);
-    const g = ctx.createLinearGradient(0, -46, 0, -30);
-    g.addColorStop(0, c.light); g.addColorStop(0.5, c.body); g.addColorStop(1, c.dark);
-    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
-    rr(ctx, 16, -44, 18, 14, 3); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = c.dark; ctx.font = '900 11px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('7', 25, -36);
-    // rider
-    const leg = trick ? -18 : -6;
-    ctx.strokeStyle = '#243044'; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(-2, -44); ctx.lineTo(leg, trick ? -22 : -16); ctx.moveTo(6, -44); ctx.lineTo(16, -18); ctx.stroke();
-    ctx.fillStyle = c.body; ctx.strokeStyle = OUT; ctx.lineWidth = 2.4;
-    rr(ctx, -10, -68, 26, 26, 8); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = c.dark; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(2, -52); ctx.lineTo(22, -40); ctx.moveTo(8, -56); ctx.lineTo(24, -42); ctx.stroke();
-    ctx.fillStyle = c.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.arc(6, -78, 13, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#bfe9ff';
-    rr(ctx, -4, -84, 22, 8, 3); ctx.fill(); ctx.stroke();
-    const ey = { blink: o.blink || 0, mood: face, lx: 0.4, ly: 0, lidColor: c.dark, dark: OUT, iris: '#3a2a1a', lidBase: 0.05 };
-    eye(ctx, 2, -80, 3.4, 3.6, ey);
-    eye(ctx, 12, -80, 3.2, 3.4, ey);
-    ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    knobWheel(ctx, -40, -24, 24, rot);
+    knobWheel(ctx, 48, -24, 24, rot);
+    ctx.save(); ctx.translate(0, -b);
+    // swingarm + shock
+    ctx.strokeStyle = '#8d96a0'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-6, -30 + b); ctx.lineTo(-40, -24 + b); ctx.stroke();
+    ctx.strokeStyle = '#c5ccd4'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(-18, -28 + b); ctx.lineTo(-10, -52); ctx.stroke();
+    // engine
+    ctx.fillStyle = '#4a515a'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    rr(ctx, -12, -42, 24, 18, 4); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#d7dde4'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(8, -32); ctx.quadraticCurveTo(-8, -18, -30, -22); ctx.stroke();
+    // frame, tank, long seat, rear fender
     ctx.beginPath();
-    if (face === 'oops') { ctx.arc(8, -70, 4, 1.15 * Math.PI, 1.85 * Math.PI); }
-    else ctx.arc(8, -74, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.moveTo(-28, -48);
+    ctx.lineTo(6, -50);
+    ctx.lineTo(22, -62);
+    ctx.lineTo(30, -48);
+    ctx.lineTo(16, -40);
+    ctx.lineTo(-4, -40);
+    ctx.lineTo(-28, -48);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, -64, 0, -36);
+    g.addColorStop(0, c.light); g.addColorStop(0.45, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.fillStyle = '#2a2e33';
+    ctx.beginPath();
+    ctx.moveTo(-34, -46); ctx.lineTo(4, -50); ctx.lineTo(2, -44); ctx.lineTo(-30, -42); ctx.closePath();
+    ctx.fill();
+    // pointy rear fender over the back wheel
+    ctx.fillStyle = c.body; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -50);
+    ctx.quadraticCurveTo(-36, -58, -52, -70);
+    ctx.quadraticCurveTo(-34, -62, -16, -56);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // front fork, angled forward
+    ctx.strokeStyle = '#cfd6de'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(26, -70); ctx.lineTo(46, -24 + b); ctx.moveTo(32, -68); ctx.lineTo(50, -24 + b); ctx.stroke();
+    // high front fender
+    ctx.fillStyle = c.body; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(48, -24 + b, 30, Math.PI * 1.15, Math.PI * 1.9);
+    ctx.arc(48, -24 + b, 24, Math.PI * 1.9, Math.PI * 1.15, true);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // number plate by the bars
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    rr(ctx, 18, -102, 20, 28, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.font = '900 14px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('7', 28, -86);
+    // handlebars
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(24, -74); ctx.lineTo(24, -64); ctx.moveTo(14, -74); ctx.lineTo(36, -72); ctx.stroke();
+    // rider leaning forward
+    const kick = trick ? -16 : 2;
+    ctx.strokeStyle = '#243044'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-2, -50); ctx.lineTo(kick, trick ? -30 : -24 + b * 0.2);
+    ctx.moveTo(4, -50); ctx.lineTo(18, -28);
+    ctx.stroke();
+    ctx.fillStyle = '#f4f6f8'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(-6, -52); ctx.lineTo(10, -78); ctx.lineTo(18, -70); ctx.lineTo(6, -48); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#243044'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(8, -70); ctx.lineTo(22, -74); ctx.stroke();
+    ctx.fillStyle = c.dark;
+    ctx.beginPath(); ctx.arc(14, -86, 11, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#9ad8ff';
+    rr(ctx, 6, -90, 16, 6, 2); ctx.fill(); ctx.stroke();
+    const smile = face === 'oops';
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    if (smile) ctx.arc(14, -80, 3.5, 1.15 * Math.PI, 1.85 * Math.PI);
+    else ctx.arc(14, -82, 3.5, 0.15 * Math.PI, 0.85 * Math.PI);
     ctx.stroke();
     ctx.restore();
     ctx.restore();
@@ -753,38 +823,77 @@
   /* Snowmobile. Origin is the ground under the track, facing right. */
   function drawSnow(ctx, o) {
     o = o || {};
-    const c = o.palette || { body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806', rim: '#1c1c1c' };
-    const OUT = '#1c2830';
-    const face = o.face || 'normal';
+    const c = o.palette || { body: '#6fdb14', light: '#d6ff6a', dark: '#2c7806' };
+    const OUT = '#1a2228';
+    const b = o.bounce || 0;
     ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.fillStyle = '#2c3238'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.ellipse(-6, -9, 30, 11, 0, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = '#9aa3ab'; ctx.lineWidth = 2;
-    for (let i = -3; i <= 3; i++) {
-      ctx.beginPath(); ctx.moveTo(-6 + i * 7, -16); ctx.lineTo(-6 + i * 7, -2); ctx.stroke();
-    }
-    ctx.strokeStyle = '#e7eef6'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(18, -6); ctx.quadraticCurveTo(40, -14, 66, -4); ctx.stroke();
-    ctx.fillStyle = '#d5dee8'; ctx.beginPath(); ctx.ellipse(66, -4, 5, 2.4, 0.2, 0, TAU); ctx.fill();
-    ctx.save(); ctx.translate(0, -(o.bounce || 0));
-    rr(ctx, -22, -40, 58, 24, 10);
-    const g = ctx.createLinearGradient(0, -40, 0, -16);
-    g.addColorStop(0, c.light); g.addColorStop(0.45, c.body); g.addColorStop(1, c.dark);
-    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.6; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(18, -40); ctx.lineTo(36, -58); ctx.lineTo(46, -40); ctx.closePath();
-    ctx.fillStyle = '#e7f7ff'; ctx.fill(); ctx.stroke();
-    const ey = { blink: o.blink || 0, mood: face, lx: o.lookX == null ? 1 : o.lookX, ly: o.lookY || 0, lidColor: c.body, dark: OUT, iris: '#204060', lidBase: face === 'normal' ? 0.08 : 0 };
-    eye(ctx, 6, -30, 5.5, 6.5, ey);
-    eye(ctx, 20, -30, 5, 6, ey);
-    ctx.strokeStyle = OUT; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    // long track, rear tip kicked up
+    ctx.fillStyle = '#2a2e33'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2.4;
     ctx.beginPath();
-    if (face === 'oops') ctx.arc(14, -20, 4, 1.1 * Math.PI, 1.9 * Math.PI);
-    else ctx.arc(14, -24, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.moveTo(10, -4);
+    ctx.lineTo(-46, -4);
+    ctx.lineTo(-64, -18);
+    ctx.lineTo(-52, -26);
+    ctx.lineTo(8, -24);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#1a1d21';
+    for (let x = -44; x <= 4; x += 7) {
+      ctx.fillRect(x, -8, 3.2, 6);
+    }
+    ctx.fillStyle = '#8b939c';
+    for (const bx of [-40, -26, -12, 2]) {
+      ctx.beginPath(); ctx.arc(bx, -14, 3.3, 0, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = '#6a727a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-50, -22); ctx.lineTo(6, -20); ctx.stroke();
+    // skis on short struts, upturned tips
+    ctx.strokeStyle = '#d5dde6'; ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.moveTo(22, -22); ctx.lineTo(28, -6); ctx.moveTo(40, -24); ctx.lineTo(44, -6); ctx.stroke();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(16, -5);
+    ctx.lineTo(58, -3);
+    ctx.quadraticCurveTo(70, -4, 76, -14);
     ctx.stroke();
-    ctx.fillStyle = c.dark; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(-4, -58, 10, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#fff6b0';
-    rr(ctx, -12, -62, 16, 5, 2); ctx.fill();
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(18, -2); ctx.lineTo(60, 0); ctx.stroke();
+    ctx.save(); ctx.translate(0, -b);
+    // pointed hood at the front
+    ctx.beginPath();
+    ctx.moveTo(4, -26);
+    ctx.lineTo(8, -58);
+    ctx.lineTo(36, -64);
+    ctx.lineTo(62, -36);
+    ctx.lineTo(48, -22);
+    ctx.lineTo(8, -22);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(10, -64, 50, -20);
+    g.addColorStop(0, c.light); g.addColorStop(0.4, c.body); g.addColorStop(1, c.dark);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.4; ctx.stroke();
+    // windshield
+    ctx.beginPath(); ctx.moveTo(28, -60); ctx.lineTo(40, -78); ctx.lineTo(50, -58); ctx.closePath();
+    ctx.fillStyle = '#dff4ff'; ctx.fill(); ctx.stroke();
+    // friendly headlight, not a face
+    ctx.fillStyle = '#fff6b0'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.ellipse(52, -40, 5, 3.4, -0.3, 0, TAU); ctx.fill(); ctx.stroke();
+    // raised seat behind the hood
+    ctx.fillStyle = '#2a3036'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-18, -30); ctx.lineTo(-6, -48); ctx.lineTo(12, -44); ctx.lineTo(10, -28); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // handlebars
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 3.4;
+    ctx.beginPath(); ctx.moveTo(24, -58); ctx.lineTo(22, -76); ctx.moveTo(10, -76); ctx.lineTo(34, -74); ctx.stroke();
+    // rider
+    ctx.fillStyle = c.dark;
+    ctx.beginPath(); ctx.arc(0, -62, 9, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#9ad8ff';
+    rr(ctx, -6, -66, 14, 5, 2); ctx.fill();
+    ctx.fillStyle = '#3a4550';
+    ctx.beginPath(); ctx.moveTo(-8, -52); ctx.lineTo(2, -40); ctx.lineTo(8, -36); ctx.lineTo(-2, -50); ctx.closePath();
+    ctx.fill();
     ctx.restore();
     ctx.restore();
   }
