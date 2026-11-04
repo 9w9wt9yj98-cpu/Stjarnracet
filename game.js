@@ -64,7 +64,10 @@
   function loadSave() {
     try {
       const g = JSON.parse(localStorage.getItem('sr_garage') || '{}');
-      if (VEHICLES[g.vehicle]) G.vehicle = g.vehicle;
+      if (VEHICLES[g.vehicle]) {
+        G.vehicle = g.vehicle;
+        G.chosen = g.chosen !== false;
+      }
       if (g.colors) {
         for (const id in DEFAULT_COLOR) {
           const n = g.colors[id];
@@ -79,7 +82,7 @@
     } catch (e) { /* keep defaults */ }
   }
   function saveGarage() {
-    try { localStorage.setItem('sr_garage', JSON.stringify({ vehicle: G.vehicle, colors: G.colors })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('sr_garage', JSON.stringify({ vehicle: G.vehicle, colors: G.colors, chosen: !!G.chosen })); } catch (e) { /* ignore */ }
   }
   function saveProgress() {
     try { localStorage.setItem('sr_progress', JSON.stringify({ done: G.done })); } catch (e) { /* ignore */ }
@@ -287,7 +290,7 @@
     state: 'title', round: 1, stars: 0, total: 0, cam: 0, camY: 0, speed: 150, baseSpeed: BASE_SPEED, t: 0,
     nextSpawn: 600, objs: [], parts: [], fly: [], bgTrucks: [], confetti: [], celebT: 0,
     hillAmp: 40, hillTarget: 40, pal: PALETTES[0], bannerT: 0, input: { fast: false, slow: false },
-    hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [], vehicle: 'car', pickFrom: 'title', pickLock: false, paused: false,
+    hudPop: 0, nextTruckT: 2, patternCount: 0, clouds: [], vehicle: 'car', chosen: false, pickFrom: 'title', pickLock: false, paused: false,
     level: 0, done: 0, colors: Object.assign({}, DEFAULT_COLOR), mapFrom: null, mapTo: 0, mapT0: 0,
   };
   const car = { y: 0, vy: 0, onGround: true, jumps: 0, angle: 0, face: 'normal', faceT: 0, blinkT: 2, blinkA: -1,
@@ -709,7 +712,7 @@
     document.querySelectorAll('.vehCard').forEach((el) => el.classList.remove('chosen'));
     markCards();
     const goLabel = $('#pickGo span');
-    if (goLabel) goLabel.textContent = (from === 'menu' || from === 'pause') ? 'Klar' : 'Kör!';
+    if (goLabel) goLabel.textContent = from === 'pause' ? 'Klar' : 'Kör!';
     $('#pick').classList.remove('hidden');
   }
   function openGarage() {
@@ -717,10 +720,14 @@
     Snd.unlock();
     openPick('menu');
   }
+  function startLevel() {
+    enterPlay(Math.min(G.done, LEVELS.length - 1));
+  }
   function startGame() {
     if (G.state !== 'title') return;
     Snd.unlock();
-    openPick('title');
+    if (G.chosen) startLevel();
+    else openPick('title');
   }
   function selectVehicle(id) {
     if (G.state !== 'pick' || G.pickLock || !VEHICLES[id]) return;
@@ -739,6 +746,7 @@
   function confirmPick() {
     if (G.state !== 'pick' || G.pickLock) return;
     G.pickLock = true;
+    G.chosen = true;
     Snd.unlock();
     Snd.yay();
     setFace('happy', 1.4);
@@ -751,9 +759,8 @@
       if (el) el.classList.remove('chosen');
       if (G.state !== 'pick') return;
       if (from === 'celebrate') openMap(false);
-      else if (from === 'menu') toTitle();
       else if (from === 'pause') resumeKept();
-      else enterPlay(Math.min(G.done, LEVELS.length - 1));
+      else startLevel();
     }, 680);
   }
   function chooseVehicle(id) { selectVehicle(id); }
