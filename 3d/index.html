@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#8fd4ff">
+<title>Stjärnracet 3D</title>
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <button id="menuBtn" class="pill hidden" type="button">Meny</button>
+  <div id="starHud" class="pill hidden" aria-live="polite"><span aria-hidden="true">★</span> <b id="starCount">0</b></div>
+  <button id="muteBtn" class="round hidden" type="button" aria-label="Ljud">🔊</button>
+  <button id="calBtn" class="pill hidden" type="button">Rikta rakt</button>
+  <p id="tiltPill" class="note hidden"></p>
+  <p id="toast" class="toast" aria-live="polite"></p>
+  <p id="cheer" class="cheer">Hurra!</p>
+  <div id="controls" class="hidden">
+    <button id="steerLeft" class="round steer" type="button" aria-label="Vänster">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M40 12 L16 32 L40 52" fill="none" stroke="#16324a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button id="steerRight" class="round steer" type="button" aria-label="Höger">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M24 12 L48 32 L24 52" fill="none" stroke="#16324a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button id="jumpBtn" class="round jump" type="button" aria-label="Hoppa">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 10 L50 32 H40 V52 H24 V32 H14 Z" fill="#fff" stroke="#8a3b00" stroke-width="4" stroke-linejoin="round"/></svg>
+      <span>Hoppa!</span>
+    </button>
+  </div>
+</div>
+
+<div id="rotateHint" class="hidden">Vrid telefonen sidledes</div>
+
+<div id="title" class="overlay">
+  <div class="card">
+    <h1>Stjärn<span>racet</span> 3D</h1>
+    <p class="lead">Luta telefonen åt sidan för att styra. De stora pilarna funkar också, och på datorn piltangenterna.</p>
+    <p class="lead strong">Tryck Kör! så kan telefonen fråga om lov att känna lutningen. Välj Tillåt.</p>
+    <div class="colors" role="group" aria-label="Färg">
+      <button id="colorRed" class="swatch" type="button" data-color="red" aria-pressed="true">
+        <i class="blob red" aria-hidden="true"></i><span>Röd</span>
+      </button>
+      <button id="colorGreen" class="swatch" type="button" data-color="green" aria-pressed="false">
+        <i class="blob green" aria-hidden="true"></i><span>Grön</span>
+      </button>
+    </div>
+    <button id="startBtn" class="go" type="button">Kör!</button>
+    <a class="textLink" href="../">Vanliga spelet</a>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card pauseCard">
+    <button id="resumeBtn" class="go wide" type="button">Fortsätt</button>
+    <button id="pauseCal" type="button">Rikta rakt</button>
+    <button id="pauseColor" type="button">Byt färg</button>
+    <button id="pauseMute" type="button">Ljud</button>
+    <button id="homeBtn" type="button">Startmeny</button>
+    <a id="classicLink" class="textBtn wide" href="../">Vanliga spelet</a>
+  </div>
+</div>
+
+<div id="fail" class="overlay hidden">
+  <div class="card">
+    <h1>Oj</h1>
+    <p class="lead">3D kunde inte starta i den här webbläsaren.</p>
+    <a class="go textBtn" href="../">Vanliga spelet</a>
+  </div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
