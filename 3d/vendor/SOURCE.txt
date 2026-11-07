@@ -1,0 +1,5 @@
+three.js 0.170.0
+Official build file build/three.module.min.js, copied verbatim.
+Upstream: https://github.com/mrdoob/three.js/tree/r170
+License: MIT (see three.LICENSE)
+No CDN import. The page loads this file as a local ES module.
