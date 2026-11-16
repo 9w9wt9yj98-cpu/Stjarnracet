@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#8fd4ff">
 <title>Stjärnracet 3D</title>
 <link rel="icon" href="../icons/icon-192.png">
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
 <div id="stage"></div>
@@ -21,6 +21,7 @@
   <p id="tiltPill" class="note hidden"></p>
   <p id="toast" class="toast" aria-live="polite"></p>
   <p id="cheer" class="cheer">Hurra!</p>
+  <div id="speedLines" class="hidden" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div id="controls" class="hidden">
     <button id="steerLeft" class="round steer" type="button" aria-label="Vänster">
       <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M40 12 L16 32 L40 52" fill="none" stroke="#16324a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -28,6 +29,7 @@
     <button id="steerRight" class="round steer" type="button" aria-label="Höger">
       <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M24 12 L48 32 L24 52" fill="none" stroke="#16324a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
+    <button id="slideBtn" class="trick" type="button" aria-label="Sladda">Sladda!</button>
     <button id="jumpBtn" class="round jump" type="button" aria-label="Hoppa">
       <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 10 L50 32 H40 V52 H24 V32 H14 Z" fill="#fff" stroke="#8a3b00" stroke-width="4" stroke-linejoin="round"/></svg>
       <span>Hoppa!</span>
@@ -40,7 +42,7 @@
 <div id="title" class="overlay">
   <div class="card">
     <h1>Stjärn<span>racet</span> 3D</h1>
-    <p class="lead">Luta telefonen åt sidan för att styra. De stora pilarna funkar också, och på datorn piltangenterna.</p>
+    <p class="lead">Sväng hårt, eller håll Sladda, så slirar bilen. Luta telefonen eller använd pilarna.</p>
     <p class="lead strong">Tryck Kör! så kan telefonen fråga om lov att känna lutningen. Välj Tillåt.</p>
     <div class="colors" role="group" aria-label="Färg">
       <button id="colorRed" class="swatch" type="button" data-color="red" aria-pressed="true">
@@ -74,6 +76,6 @@
   </div>
 </div>
 
-<script type="module" src="./main.js"></script>
+<script type="module" src="./main.js?v=2"></script>
 </body>
 </html>
