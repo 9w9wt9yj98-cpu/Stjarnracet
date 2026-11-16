@@ -1,23 +1,26 @@
 /**
  * Landscape tilt → steer.
  *
- * DeviceOrientation (portrait device axes):
- *   gamma > 0 when the device's right side is down.
- *   beta  > 0 when the top is lifted toward the user from flat (flat screen-up is 0).
- *
- * screen.orientation.angle is clockwise from natural portrait:
- *   0 portrait, 90 landscape with the device top toward screen-right,
- *   270 the other landscape, 180 upside down.
- *
  * Returned degrees are positive when the right edge of the *screen* is lower.
+ * Positive steer then turns the car to the driver's right.
+ *
+ * W3C deviceorientation, right-hand rule, device axes in portrait:
+ *   gamma > 0 rotates about +Y and lowers the device's right side.
+ *   beta  > 0 rotates about +X and lifts the device's top (flat screen-up is 0;
+ *   upright, top up, facing you, is about 90).
+ * These signs were not flipped. The reversed arrows on iPhone were the chase
+ * camera: screen-right is world -X when the camera looks along +Z. Tilt has
+ * not been checked on a physical phone. Meny → Vänd styrning flips tilt only.
+ *
+ * screen.orientation.angle is clockwise from portrait:
+ *   90  landscape, device top toward screen-right (home indicator on the left)
+ *   270 the other landscape (home indicator on the right)
+ * window.orientation is counterclockwise-positive, so -90 → angle 90 and 90 → 270.
+ *
  *   angle 0:   gamma
  *   angle 90:  -beta
  *   angle 270: beta
  *   angle 180: -gamma
- *
- * If the window is landscape but the browser still reports a portrait angle
- * (common on desktop and some headless sessions), angle 90 is assumed.
- * A real phone that reports 90 or 270 keeps that value.
  */
 
 export const TILT_DEAD_DEG = 6;
@@ -47,7 +50,7 @@ export function tiltRightDownDegrees(beta, gamma, screenAngle) {
   return g;
 }
 
-/** Map a centered tilt in degrees to a steer in [-1, 1]. */
+/** Map a centered tilt in degrees to a steer in [-1, 1]. Positive steers right. */
 export function steerFromTiltDegrees(raw, zero, dead = TILT_DEAD_DEG, span = TILT_SPAN_DEG) {
   const d = (Number.isFinite(raw) ? raw : 0) - (Number.isFinite(zero) ? zero : 0);
   const mag = Math.abs(d);

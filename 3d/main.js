@@ -1,10 +1,10 @@
-import * as THREE from './vendor/three.module.min.js?v=2';
+import * as THREE from './vendor/three.module.min.js?v=3';
 import {
   TILT_DEAD_DEG, TILT_SPAN_DEG,
   orientationToScreenAngle, tiltRightDownDegrees, steerFromTiltDegrees,
-} from './tilt.js?v=2';
+} from './tilt.js?v=3';
 
-const BUILD = '3d-v2';
+const BUILD = '3d-v3';
 const PREF_KEY = 'sr3d_prefs';
 const GRAV = 28;
 const PAINT = { red: 0xef3d3d, green: 0x2fbe4a };
@@ -114,6 +114,7 @@ const Snd = {
 };
 
 let colorName = 'red';
+let invertSteer = false;
 let state = 'title';
 let stars = 0;
 let cheered = false;
@@ -207,10 +208,13 @@ function loadPrefs() {
     const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
     if (p.color === 'green' || p.color === 'red') colorName = p.color;
     if (typeof p.muted === 'boolean') Snd.muted = p.muted;
+    if (typeof p.invertSteer === 'boolean') invertSteer = p.invertSteer;
   } catch (e) { /* keep defaults */ }
 }
 function savePrefs() {
-  try { localStorage.setItem(PREF_KEY, JSON.stringify({ color: colorName, muted: !!Snd.muted })); } catch (e) { /* ignore */ }
+  try {
+    localStorage.setItem(PREF_KEY, JSON.stringify({ color: colorName, muted: !!Snd.muted, invertSteer: !!invertSteer }));
+  } catch (e) { /* ignore */ }
 }
 
 function currentScreenAngle() {
@@ -818,7 +822,8 @@ function step(dt) {
   updateTiltSteer();
   const buttons = (holdR ? 1 : 0) - (holdL ? 1 : 0);
   const key = ((keys.has('ArrowRight') || keys.has('KeyD')) ? 1 : 0) - ((keys.has('ArrowLeft') || keys.has('KeyA')) ? 1 : 0);
-  const steerTarget = clamp((tilt.status === 'granted' ? tilt.target : 0) + buttons + key, -1, 1);
+  const tiltPart = (tilt.status === 'granted' ? tilt.target : 0) * (invertSteer ? -1 : 1);
+  const steerTarget = clamp(tiltPart + buttons + key, -1, 1);
   car.steer += (steerTarget - car.steer) * (1 - Math.exp(-dt * 10));
   const slideHeld = holdSlide || keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyF');
   const wantDrift = slideHeld || Math.abs(car.steer) > 0.74;
@@ -826,7 +831,9 @@ function step(dt) {
   $('slideBtn').classList.toggle('on', slideHeld);
 
   const yawRate = car.steer * (1.45 + car.drift * 2.15);
-  car.yaw = wrap(car.yaw + yawRate * dt);
+  // Positive steer is right. The chase camera looks along +Z, and Three.js
+  // lookAt puts screen-right on world -X, so a right turn decreases yaw.
+  car.yaw = wrap(car.yaw - yawRate * dt);
   const fx = Math.sin(car.yaw);
   const fz = Math.cos(car.yaw);
   let grip = 0.85 + (1 - car.drift) * 7.2;
@@ -1077,6 +1084,10 @@ function markColor() {
   });
   if (paintMat) paintMat.color.setHex(PAINT[colorName]);
 }
+function markInvert() {
+  const el = $('pauseInvert');
+  if (el) el.setAttribute('aria-pressed', invertSteer ? 'true' : 'false');
+}
 function chooseColor(name) {
   if (name !== 'red' && name !== 'green') return;
   colorName = name;
@@ -1093,6 +1104,15 @@ function bindUi() {
   $('homeBtn').addEventListener('click', () => toTitle());
   $('pauseCal').addEventListener('click', () => calibrate());
   $('calBtn').addEventListener('click', () => calibrate());
+  $('pauseInvert').addEventListener('click', () => {
+    invertSteer = !invertSteer;
+    markInvert();
+    savePrefs();
+  });
+  markInvert();
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => e.preventDefault());
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
   $('pauseColor').addEventListener('click', () => chooseColor(colorName === 'red' ? 'green' : 'red'));
   const flipMute = () => { Snd.unlock(); Snd.setMuted(!Snd.muted); savePrefs(); };
   $('muteBtn').addEventListener('click', flipMute);
@@ -1100,6 +1120,7 @@ function bindUi() {
   holdButton($('steerLeft'), () => { holdL = true; }, () => { holdL = false; });
   holdButton($('steerRight'), () => { holdR = true; }, () => { holdR = false; });
   holdButton($('slideBtn'), () => { holdSlide = true; }, () => { holdSlide = false; });
+  guardHold($('jumpBtn'));
   $('jumpBtn').addEventListener('pointerdown', (e) => {
     e.preventDefault();
     Snd.resume();
@@ -1116,7 +1137,12 @@ function bindUi() {
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => { holdL = false; holdR = false; holdSlide = false; keys.clear(); });
 }
+function guardHold(el) {
+  el.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
 function holdButton(el, down, up) {
+  guardHold(el);
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     Snd.resume();
@@ -1130,6 +1156,7 @@ function holdButton(el, down, up) {
 window.__sr3d = {
   get ready() { return ready; },
   get build() { return BUILD; },
+  get invertSteer() { return invertSteer; },
   get state() { return state; },
   get color() { return colorName; },
   get stars() { return stars; },
@@ -1139,6 +1166,17 @@ window.__sr3d = {
   get y() { return car.y; },
   get z() { return car.z; },
   get yaw() { return car.yaw; },
+  get camRight() {
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
+    return { x: e[0], y: e[1], z: e[2] };
+  },
+  get aimScreen() {
+    carGroup.updateMatrixWorld();
+    const nose = new THREE.Vector3(0, 0.9, 1.8).applyMatrix4(carGroup.matrixWorld).project(camera);
+    const tail = new THREE.Vector3(0, 0.9, -1.7).applyMatrix4(carGroup.matrixWorld).project(camera);
+    return nose.x - tail.x;
+  },
   get velYaw() { return Math.atan2(car.vx, car.vz); },
   get slip() { return car.slip; },
   get speed() { return car.speed; },
